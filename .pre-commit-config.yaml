@@ -1,0 +1,66 @@
+---
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: check-yaml
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: trailing-whitespace
+  - repo: https://github.com/adrienverge/yamllint
+    rev: cba56bcde1fdd01c1deb3f945e69764c291a6530  # frozen: v1.38.0
+    hooks:
+      - id: yamllint
+  - repo: https://github.com/terraform-docs/terraform-docs
+    rev: 9d4455198941806aa02ec14369de030cda2c2b59  # frozen: v0.24.0
+    hooks:
+      - id: terraform-docs-go
+        args: [.]
+  # The upstream Docker hooks pull their images by tag, so run the same images
+  # as local hooks pinned by digest.
+  - repo: local
+    hooks:
+      - id: terraform-fmt
+        name: terraform fmt
+        language: docker_image
+        files: \.(tf|tftest\.hcl)$
+        entry: docker.io/hashicorp/terraform:1.16.4@sha256:985cdc6c1d9b0a65b83377f666efd2f740b47f02ac55be1ced3d18f7d3b0e829 fmt
+      - id: tflint
+        name: tflint
+        language: docker_image
+        types: [terraform]
+        pass_filenames: false
+        entry: ghcr.io/terraform-linters/tflint:v0.64.0@sha256:1c595f42d794c32c45a6ea8b58655fd66433d4ca3b1bc631c574a48d120bd19f --recursive --config=/src/.tflint.hcl
+      - id: markdownlint-docker
+        name: markdownlint
+        language: docker_image
+        types: [markdown]
+        entry: ghcr.io/igorshubovych/markdownlint-cli:v0.49.1@sha256:905baf9f6bd11da2ede8c394882c616509385f24b8b8d54fff6e111be88f39de
+      - id: actionlint-docker
+        name: Lint GitHub Actions workflow files
+        language: docker_image
+        types: [yaml]
+        files: ^\.github/workflows/
+        entry: docker.io/rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: 91ab4bf57e58b32adf1a122681f6ebe164d081c8  # frozen: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+  # Keeps the revs above current and frozen to commit SHAs. Checks at most once
+  # a day, and only takes releases that are at least a week old.
+  - repo: https://github.com/mosher-labs/pre-commit-autoupdate
+    rev: 980093cc39eef7c877c585acf14cb6a8b255590e  # frozen: v1.2.1
+    hooks:
+      - id: autoupdate
+        args: [--freeze, --interval-hours, "24", --min-age-days, "7"]

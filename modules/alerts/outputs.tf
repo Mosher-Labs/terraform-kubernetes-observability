@@ -1,0 +1,23 @@
+output "folder_uid" {
+  description = "UID of the Grafana folder that holds the rules."
+  value       = grafana_folder.this.uid
+}
+
+output "rule_ids" {
+  description = "IDs of the rules that were created, after cluster type, disabled_rules and control_plane are applied."
+  value       = sort(keys(local.rules))
+}
+
+output "rules" {
+  description = "The rules as created: group, title, query, threshold, pending period and severity, keyed by rule ID."
+  value = {
+    for id, r in local.rules : id => {
+      group     = r.group
+      expr      = r.expr
+      title     = r.title
+      threshold = r.threshold
+      for       = r.for
+      severity  = r.severity
+    }
+  }
+}

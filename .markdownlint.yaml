@@ -1,0 +1,46 @@
+---
+# Markdown linting configuration
+# See: https://github.com/markdownlint/markdownlint/blob/master/docs/RULES.md
+
+# MD007 - Unordered list indentation
+# Allow 2 or 4 space indentation for nested lists
+MD007:
+  indent: 2
+
+# MD013 - Line length
+# Allow longer lines for tables, code, and headings
+MD013:
+  line_length: 120
+  tables: false
+  code_blocks: false
+  headings: false
+
+# MD024 - Multiple headers with the same content
+# Allow duplicate headers in different sections
+MD024:
+  siblings_only: true
+
+# MD029 - Ordered list item prefix
+# Allow any ordered list style (1. 1. 1. or 1. 2. 3.)
+MD029:
+  style: "one_or_ordered"
+
+# MD033 - Inline HTML
+# Allow HTML for things markdown can't do
+MD033:
+  allowed_elements:
+    - br
+    - details
+    - summary
+
+# MD034 - Bare URL used
+# Disabled - we use bare URLs in reference sections
+MD034: false
+
+# MD036 - Emphasis used instead of a header
+# Disabled - we use bold for emphasis in lists
+MD036: false
+
+# MD041 - First line in file should be a top level header
+# Disabled - CLAUDE.md has comments at the top
+MD041: false
