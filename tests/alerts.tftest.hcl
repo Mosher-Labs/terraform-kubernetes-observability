@@ -208,3 +208,157 @@ run "every_rule_has_a_subject" {
     error_message = "Every rule needs a subject for notification titles."
   }
 }
+
+run "apm_rules_are_off_by_default" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name = "homelab"
+  }
+
+  assert {
+    condition     = length([for id, r in output.rules : id if r.group == "apm"]) == 0
+    error_message = "APM rules should only exist when apm.enabled is set."
+  }
+}
+
+run "apm_rules_use_the_configured_metric_and_labels" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    apm = {
+      enabled                 = true
+      latency_p90_seconds     = 2
+      metric                  = "grafana_http_request_duration_seconds"
+      min_requests_per_second = 0.5
+      route_label             = "handler"
+      selector                = "namespace=\"monitoring\""
+      service_label           = "job"
+      status_label            = "status_code"
+    }
+    cluster_name = "homelab"
+  }
+
+  assert {
+    condition     = length([for id, r in output.rules : id if r.group == "apm"]) == 6
+    error_message = "Enabling APM should add its 6 rules."
+  }
+
+  assert {
+    condition     = strcontains(output.rules.service_error_rate_high.expr, "grafana_http_request_duration_seconds_count{status_code=~\"5..\",namespace=\"monitoring\"}")
+    error_message = "The metric, status label and selector should be substituted."
+  }
+
+  assert {
+    condition     = strcontains(output.rules.endpoint_error_rate_high.expr, "sum by (job, handler)") && strcontains(output.rules.endpoint_error_rate_high.expr, ">= 0.5")
+    error_message = "The service and route labels and the traffic floor should be substituted."
+  }
+
+  assert {
+    condition     = output.rules.service_latency_p90_high.threshold == 2 && output.rules.service_traffic_drop.threshold == 25
+    error_message = "Thresholds should come from the apm settings."
+  }
+
+  assert {
+    condition     = alltrue([for id, r in output.rules : !strcontains(r.expr, "__") && !strcontains(r.subject, "__") if r.group == "apm"])
+    error_message = "No placeholder should be left in an APM rule."
+  }
+}
+
+run "apm_rule_ids_are_known_even_when_off" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name   = "homelab"
+    disabled_rules = ["service_traffic_drop"]
+  }
+
+  assert {
+    condition     = !contains(output.rule_ids, "service_traffic_drop")
+    error_message = "Disabling an APM rule while APM is off should be accepted."
+  }
+}
+
+run "backing_services_are_off_by_default" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name = "homelab"
+  }
+
+  assert {
+    condition     = length([for id, r in output.rules : id if r.group == "backing-services"]) == 0
+    error_message = "No backing-service rules should exist until a section is enabled."
+  }
+}
+
+run "each_backing_service_section_is_separate" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    backing_services = {
+      postgres = { connections_percent = 70, enabled = true }
+      redis    = { enabled = true }
+      selector = "namespace=\"data\""
+    }
+    cluster_name = "homelab"
+  }
+
+  assert {
+    condition     = sort([for id, r in output.rules : id if r.group == "backing-services"]) == sort(["postgres_connections_high", "postgres_deadlocks", "postgres_down", "postgres_replication_lag", "redis_down", "redis_memory_high", "redis_rejected_connections"])
+    error_message = "Only the Postgres and Redis rules should be created."
+  }
+
+  assert {
+    condition     = output.rules.postgres_connections_high.threshold == 70
+    error_message = "Section thresholds should apply."
+  }
+
+  assert {
+    condition     = strcontains(output.rules.postgres_down.expr, "pg_up{namespace=\"data\"}") && strcontains(output.rules.redis_memory_high.expr, "redis_memory_max_bytes{namespace=\"data\"}")
+    error_message = "The selector should scope every backing-service rule."
+  }
+
+  assert {
+    condition     = alltrue([for id, r in output.rules : !strcontains(r.expr, "__BSEL__") if r.group == "backing-services"])
+    error_message = "No selector placeholder should be left."
+  }
+}
+
+run "backing_rule_ids_are_known_when_off" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name = "homelab"
+    overrides    = { rabbitmq_queue_backlog = { threshold = 50 } }
+  }
+
+  assert {
+    condition     = !contains(output.rule_ids, "rabbitmq_queue_backlog")
+    error_message = "Overriding a backing-service rule that's off should be accepted and create nothing."
+  }
+}

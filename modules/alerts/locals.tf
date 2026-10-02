@@ -5,12 +5,18 @@ locals {
     etcd      = coalesce(var.control_plane.etcd, contains(["generic", "openshift"], var.cluster_type))
   }
 
+  # The rules turned on: the core catalog plus the optional groups.
+  enabled_catalog = merge(local.catalog, { for id, r in local.apm_catalog : id => r if var.apm.enabled }, local.backing_catalog)
+
   groups = distinct([for r in values(local.rules) : r.group])
+
+  # Every rule this module knows, enabled or not, for checking rule IDs.
+  known_rules = merge(local.catalog, local.apm_catalog)
 
   managed_control_plane = contains(["aks", "eks", "gke"], var.cluster_type)
 
   rules = {
-    for id, r in local.catalog : id => {
+    for id, r in local.enabled_catalog : id => {
       expr = replace(
         replace(r.expr, ",__SEL__}", var.workload_selector == "" ? "}" : ",${var.workload_selector}}"),
         "{__SEL__}", var.workload_selector == "" ? "" : "{${var.workload_selector}}",
@@ -28,5 +34,5 @@ locals {
     if !contains(var.disabled_rules, id) && (try(r.requires, null) == null ? true : local.capabilities[r.requires])
   }
 
-  unknown_ids = setsubtract(setunion(var.disabled_rules, keys(var.overrides)), keys(local.catalog))
+  unknown_ids = setsubtract(setunion(var.disabled_rules, keys(var.overrides)), concat(keys(local.known_rules), local.backing_rule_ids))
 }
