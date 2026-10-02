@@ -1,3 +1,22 @@
+variable "apm" {
+  default     = {}
+  description = "Service-level alerts from a request-duration histogram: latency, error rate per service and per route, traffic drops, and errors right after a deploy. Defaults follow the OpenTelemetry HTTP semantic conventions as exported to Prometheus. Rules only judge services with at least `min_requests_per_second`."
+  type = object({
+    deploy_error_rate_percent = optional(number, 1)
+    enabled                   = optional(bool, false)
+    error_rate_percent        = optional(number, 5)
+    latency_avg_seconds       = optional(number, 0.5)
+    latency_p90_seconds       = optional(number, 1)
+    metric                    = optional(string, "http_server_request_duration_seconds")
+    min_requests_per_second   = optional(number, 0.1)
+    route_label               = optional(string, "http_route")
+    selector                  = optional(string, "")
+    service_label             = optional(string, "job")
+    status_label              = optional(string, "http_response_status_code")
+    traffic_drop_percent      = optional(number, 75)
+  })
+}
+
 variable "cluster_name" {
   description = "Name of the cluster. Added to every alert as the `cluster` label and to each rule title, so alerts from several clusters stay distinguishable in one Grafana."
   type        = string

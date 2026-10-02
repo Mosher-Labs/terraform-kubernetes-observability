@@ -2,6 +2,20 @@ variable "alerts" {
   default     = {}
   description = "Alert catalog settings. See modules/alerts for each field."
   type = object({
+    apm = optional(object({
+      deploy_error_rate_percent = optional(number, 1)
+      enabled                   = optional(bool, false)
+      error_rate_percent        = optional(number, 5)
+      latency_avg_seconds       = optional(number, 0.5)
+      latency_p90_seconds       = optional(number, 1)
+      metric                    = optional(string, "http_server_request_duration_seconds")
+      min_requests_per_second   = optional(number, 0.1)
+      route_label               = optional(string, "http_route")
+      selector                  = optional(string, "")
+      service_label             = optional(string, "job")
+      status_label              = optional(string, "http_response_status_code")
+      traffic_drop_percent      = optional(number, 75)
+    }), {})
     control_plane               = optional(object({ apiserver = optional(bool), etcd = optional(bool) }), {})
     disabled_rules              = optional(set(string), [])
     enabled                     = optional(bool, true)
