@@ -22,6 +22,8 @@ managed Prometheus, or Grafana Cloud.
 - **Service-level (APM) alerts**, opt in: latency, error rate per service and
   per route, traffic drops, and errors right after a deploy, from any
   request-duration histogram.
+- **Backing-service alerts**, opt in per technology: Postgres, MySQL, Redis,
+  RabbitMQ and MongoDB.
 - **Synthetic checks:** probe a list of URLs, and alert when one fails, gets
   slow, or its TLS certificate is about to expire.
 - **Opt-in installs** with `modules/stack`, one flag each: kube-prometheus-stack,
@@ -30,8 +32,6 @@ managed Prometheus, or Grafana Cloud.
   ships to Loki, and Prometheus scrapes the probes.
 - **Submodules you can use on their own:** `modules/alerts`,
   `modules/dashboards`, `modules/notifications` and `modules/stack`.
-
-Planned: backing-service alerts.
 
 ## Usage
 
@@ -180,6 +180,35 @@ service whose metrics vanish entirely has no data and stays quiet; synthetic
 checks cover that case. `service_errors_after_deploy` needs a `namespace`
 label on the request metrics, which Prometheus adds when it scrapes pods.
 
+## Backing-service alerts
+
+Turn on a section per technology in `alerts.backing_services`. Each reads the
+metrics of that technology's standard Prometheus exporter, so the exporter has
+to be running and scraped:
+
+| Section | Exporter | Rules |
+| --- | --- | --- |
+| `postgres` | [postgres_exporter](https://github.com/prometheus-community/postgres_exporter) | down, connections > 80% of `max_connections`, replication lag > 30s, deadlocks |
+| `mysql` | [mysqld_exporter](https://github.com/prometheus/mysqld_exporter) | down, connections > 80% of `max_connections`, replication lag > 30s |
+| `redis` | [redis_exporter](https://github.com/oliver006/redis_exporter) | down, memory > 90% of `maxmemory`, rejected connections |
+| `rabbitmq` | RabbitMQ's built-in `rabbitmq_prometheus` plugin | resource alarm, > 1000 messages ready, > 1000 unacknowledged |
+| `mongodb` | [mongodb_exporter](https://github.com/percona/mongodb_exporter) | down, connections > 80%, replica set lag > 30s |
+
+```hcl
+alerts = {
+  backing_services = {
+    postgres = { connections_percent = 70, enabled = true }
+    redis    = { enabled = true }
+    selector = "namespace=\"data\""
+  }
+}
+```
+
+Rules are keyed by the exporter's `instance` label. `selector` scopes all of
+them, for example to one namespace. Managed services that only report to a
+cloud provider, such as Amazon DocumentDB through CloudWatch, need an exporter
+that turns those metrics into Prometheus ones first.
+
 ## Cluster types
 
 | `cluster_type` | API server rules | etcd rules |
@@ -270,7 +299,7 @@ credentials. See [CONTRIBUTING.md](CONTRIBUTING.md).
 | ---- | ----------- | ---- | ------- | :------: |
 | cluster\_name | Name of the cluster, added to every alert as the `cluster` label and to rule titles. | `string` | n/a | yes |
 | prometheus\_datasource\_uid | UID of the Prometheus-compatible Grafana datasource the alert rules query. | `string` | n/a | yes |
-| alerts | Alert catalog settings. See modules/alerts for each field. | ```object({ apm = optional(object({ deploy_error_rate_percent = optional(number, 1) enabled = optional(bool, false) error_rate_percent = optional(number, 5) latency_avg_seconds = optional(number, 0.5) latency_p90_seconds = optional(number, 1) metric = optional(string, "http_server_request_duration_seconds") min_requests_per_second = optional(number, 0.1) route_label = optional(string, "http_route") selector = optional(string, "") service_label = optional(string, "job") status_label = optional(string, "http_response_status_code") traffic_drop_percent = optional(number, 75) }), {}) control_plane = optional(object({ apiserver = optional(bool), etcd = optional(bool) }), {}) disabled_rules = optional(set(string), []) enabled = optional(bool, true) evaluation_interval_seconds = optional(number, 60) folder_title = optional(string) labels = optional(map(string), {}) overrides = optional(map(object({ paused = optional(bool) pending_period = optional(string) severity = optional(string) threshold = optional(number) })), {}) workload_selector = optional(string, "") })``` | `{}` | no |
+| alerts | Alert catalog settings. See modules/alerts for each field. | ```object({ apm = optional(object({ deploy_error_rate_percent = optional(number, 1) enabled = optional(bool, false) error_rate_percent = optional(number, 5) latency_avg_seconds = optional(number, 0.5) latency_p90_seconds = optional(number, 1) metric = optional(string, "http_server_request_duration_seconds") min_requests_per_second = optional(number, 0.1) route_label = optional(string, "http_route") selector = optional(string, "") service_label = optional(string, "job") status_label = optional(string, "http_response_status_code") traffic_drop_percent = optional(number, 75) }), {}) backing_services = optional(object({ mongodb = optional(object({ connections_percent = optional(number, 80) enabled = optional(bool, false) replication_lag_seconds = optional(number, 30) }), {}) mysql = optional(object({ connections_percent = optional(number, 80) enabled = optional(bool, false) replication_lag_seconds = optional(number, 30) }), {}) postgres = optional(object({ connections_percent = optional(number, 80) enabled = optional(bool, false) replication_lag_seconds = optional(number, 30) }), {}) rabbitmq = optional(object({ enabled = optional(bool, false) queue_depth = optional(number, 1000) unacked_messages = optional(number, 1000) }), {}) redis = optional(object({ enabled = optional(bool, false) memory_percent = optional(number, 90) }), {}) selector = optional(string, "") }), {}) control_plane = optional(object({ apiserver = optional(bool), etcd = optional(bool) }), {}) disabled_rules = optional(set(string), []) enabled = optional(bool, true) evaluation_interval_seconds = optional(number, 60) folder_title = optional(string) labels = optional(map(string), {}) overrides = optional(map(object({ paused = optional(bool) pending_period = optional(string) severity = optional(string) threshold = optional(number) })), {}) workload_selector = optional(string, "") })``` | `{}` | no |
 | cluster\_type | Kind of cluster: eks, aks, gke, openshift, k3s or generic. Decides which control-plane rules apply. | `string` | `"generic"` | no |
 | dashboards | Overview dashboard settings. Set `loki_datasource_uid` to add a logs row. See modules/dashboards. | ```object({ enabled = optional(bool, true) folder_title = optional(string) loki_datasource_uid = optional(string) refresh = optional(string, "1m") })``` | `{}` | no |
 | notifications | Where alerts go. Turn on any combination of channels by setting them; see modules/notifications. Set `enabled = false` to manage contact points yourself. | ```object({ contact_point_name = optional(string) email = optional(object({ addresses = list(string) message = optional(string) single_email = optional(bool, true) subject = optional(string) })) enabled = optional(bool, true) manage_notification_policy = optional(bool, true) policy = optional(object({ critical_repeat_interval = optional(string, "1h") group_by = optional(list(string), ["grafana_folder", "alertname", "cluster"]) group_interval = optional(string, "5m") group_wait = optional(string, "30s") warning_repeat_interval = optional(string, "4h") }), {}) title_template = optional(string) })``` | `{}` | no |

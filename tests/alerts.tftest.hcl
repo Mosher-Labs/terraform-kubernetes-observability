@@ -290,3 +290,75 @@ run "apm_rule_ids_are_known_even_when_off" {
     error_message = "Disabling an APM rule while APM is off should be accepted."
   }
 }
+
+run "backing_services_are_off_by_default" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name = "homelab"
+  }
+
+  assert {
+    condition     = length([for id, r in output.rules : id if r.group == "backing-services"]) == 0
+    error_message = "No backing-service rules should exist until a section is enabled."
+  }
+}
+
+run "each_backing_service_section_is_separate" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    backing_services = {
+      postgres = { connections_percent = 70, enabled = true }
+      redis    = { enabled = true }
+      selector = "namespace=\"data\""
+    }
+    cluster_name = "homelab"
+  }
+
+  assert {
+    condition     = sort([for id, r in output.rules : id if r.group == "backing-services"]) == sort(["postgres_connections_high", "postgres_deadlocks", "postgres_down", "postgres_replication_lag", "redis_down", "redis_memory_high", "redis_rejected_connections"])
+    error_message = "Only the Postgres and Redis rules should be created."
+  }
+
+  assert {
+    condition     = output.rules.postgres_connections_high.threshold == 70
+    error_message = "Section thresholds should apply."
+  }
+
+  assert {
+    condition     = strcontains(output.rules.postgres_down.expr, "pg_up{namespace=\"data\"}") && strcontains(output.rules.redis_memory_high.expr, "redis_memory_max_bytes{namespace=\"data\"}")
+    error_message = "The selector should scope every backing-service rule."
+  }
+
+  assert {
+    condition     = alltrue([for id, r in output.rules : !strcontains(r.expr, "__BSEL__") if r.group == "backing-services"])
+    error_message = "No selector placeholder should be left."
+  }
+}
+
+run "backing_rule_ids_are_known_when_off" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name = "homelab"
+    overrides    = { rabbitmq_queue_backlog = { threshold = 50 } }
+  }
+
+  assert {
+    condition     = !contains(output.rule_ids, "rabbitmq_queue_backlog")
+    error_message = "Overriding a backing-service rule that's off should be accepted and create nothing."
+  }
+}

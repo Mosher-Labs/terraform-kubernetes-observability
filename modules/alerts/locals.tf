@@ -6,7 +6,7 @@ locals {
   }
 
   # The rules turned on: the core catalog plus the optional groups.
-  enabled_catalog = merge(local.catalog, { for id, r in local.apm_catalog : id => r if var.apm.enabled })
+  enabled_catalog = merge(local.catalog, { for id, r in local.apm_catalog : id => r if var.apm.enabled }, local.backing_catalog)
 
   groups = distinct([for r in values(local.rules) : r.group])
 
@@ -34,5 +34,5 @@ locals {
     if !contains(var.disabled_rules, id) && (try(r.requires, null) == null ? true : local.capabilities[r.requires])
   }
 
-  unknown_ids = setsubtract(setunion(var.disabled_rules, keys(var.overrides)), keys(local.known_rules))
+  unknown_ids = setsubtract(setunion(var.disabled_rules, keys(var.overrides)), concat(keys(local.known_rules), local.backing_rule_ids))
 }

@@ -3,6 +3,7 @@ module "alerts" {
   source = "./modules/alerts"
 
   apm                         = var.alerts.apm
+  backing_services            = var.alerts.backing_services
   cluster_name                = var.cluster_name
   cluster_type                = var.cluster_type
   control_plane               = var.alerts.control_plane
