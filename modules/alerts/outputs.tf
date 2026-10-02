@@ -9,13 +9,14 @@ output "rule_ids" {
 }
 
 output "rules" {
-  description = "The rules as created: group, title, query, threshold, pending period and severity, keyed by rule ID."
+  description = "The rules as created: group, title, subject, query, threshold, pending period and severity, keyed by rule ID."
   value = {
     for id, r in local.rules : id => {
       expr           = r.expr
       group          = r.group
       pending_period = r.pending_period
       severity       = r.severity
+      subject        = r.subject
       threshold      = r.threshold
       title          = r.title
     }

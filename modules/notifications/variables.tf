@@ -67,8 +67,8 @@ variable "teams" {
 }
 
 variable "title_template" {
-  default     = "{{ if eq .Status \"firing\" }}🔴 FIRING{{ if gt (len .Alerts.Firing) 1 }} ({{ len .Alerts.Firing }}){{ end }}{{ else }}✅ RESOLVED{{ if gt (len .Alerts.Resolved) 1 }} ({{ len .Alerts.Resolved }}){{ end }}{{ end }}: {{ .CommonLabels.alertname }}"
-  description = "Grafana notification template for the Slack and Teams title and the email subject, unless a channel sets its own. The default starts with 🔴 FIRING or ✅ RESOLVED, then the alert name, so a resolve is easy to match to its alert: Grafana posts it as a new message, not a thread reply."
+  default     = "{{ $alerts := .Alerts.Firing }}{{ if eq .Status \"firing\" }}🔴 FIRING{{ else }}{{ $alerts = .Alerts.Resolved }}✅ RESOLVED{{ end }}{{ if gt (len $alerts) 1 }} ({{ len $alerts }}){{ end }}: {{ .CommonLabels.alertname }}{{ range $i, $a := $alerts }}{{ if lt $i 3 }}{{ if $i }}, {{ else }} – {{ end }}{{ $a.Annotations.subject }}{{ end }}{{ end }}{{ if gt (len $alerts) 3 }}, …{{ end }}"
+  description = "Grafana notification template for the Slack and Teams title and the email subject, unless a channel sets its own. The default starts with 🔴 FIRING or ✅ RESOLVED, then the alert name and what it is about (the `subject` annotation, such as \"dex-server in argocd\"), listing up to three. Grafana posts a resolve as a new message, not a thread reply, so the title is what pairs them up."
   nullable    = false
   type        = string
 }

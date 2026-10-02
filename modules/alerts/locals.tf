@@ -20,6 +20,7 @@ locals {
       paused         = coalesce(try(var.overrides[id].paused, null), false)
       pending_period = coalesce(try(var.overrides[id].pending_period, null), r.pending_period)
       severity       = coalesce(try(var.overrides[id].severity, null), r.severity)
+      subject        = r.subject
       summary        = r.summary
       threshold      = coalesce(try(var.overrides[id].threshold, null), r.threshold)
       title          = "[${var.cluster_name}] ${r.title}"

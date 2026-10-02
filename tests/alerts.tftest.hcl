@@ -27,8 +27,8 @@ run "k3s_has_apiserver_but_not_etcd" {
   }
 
   assert {
-    condition     = length(output.rule_ids) == 25
-    error_message = "Expected the 24 workload and node rules plus apiserver_errors."
+    condition     = length(output.rule_ids) == 29
+    error_message = "Expected the 28 workload, node and synthetic rules plus apiserver_errors."
   }
 }
 
@@ -62,7 +62,7 @@ run "generic_includes_all_rules" {
   }
 
   assert {
-    condition     = length(output.rule_ids) == 26
+    condition     = length(output.rule_ids) == 30
     error_message = "A generic cluster should get every catalog rule."
   }
 }
@@ -190,4 +190,21 @@ run "bad_cluster_type_is_rejected" {
   }
 
   expect_failures = [var.cluster_type]
+}
+
+run "every_rule_has_a_subject" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name = "homelab"
+  }
+
+  assert {
+    condition     = alltrue([for r in values(output.rules) : r.subject != ""])
+    error_message = "Every rule needs a subject for notification titles."
+  }
 }

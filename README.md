@@ -17,12 +17,16 @@ managed Prometheus, or Grafana Cloud.
   metrics, so those rules are only created for self-managed clusters.
 - **Notifications** to Slack, email, Webex and Teams. Each channel is optional
   and independent.
-- **Submodules you can use on their own:** `modules/alerts` and
-  `modules/notifications`.
+- **Synthetic checks:** probe a list of URLs, and alert when one fails, gets
+  slow, or its TLS certificate is about to expire.
+- **Opt-in installs** with `modules/stack`, one flag each: kube-prometheus-stack,
+  Loki, Grafana Alloy (pod logs to Loki) and the blackbox exporter (synthetic
+  checks). The pieces are wired together: Grafana gets a Loki datasource, Alloy
+  ships to Loki, and Prometheus scrapes the probes.
+- **Submodules you can use on their own:** `modules/alerts`,
+  `modules/notifications` and `modules/stack`.
 
-Planned: opt-in installs of kube-prometheus-stack, Loki and the blackbox
-exporter, one flag each; dashboards; synthetic checks; service-level (APM) and
-backing-service alerts.
+Planned: dashboards, service-level (APM) and backing-service alerts.
 
 ## Usage
 
@@ -73,7 +77,9 @@ and route on the `cluster` and `severity` labels yourself.
 ### Message titles
 
 Slack and Teams titles and email subjects start with 🔴 FIRING or ✅ RESOLVED,
-then the alert name, for example `🔴 FIRING (2): [homelab] Pod crash looping`.
+then the alert name and what it is about, for example
+`🔴 FIRING (2): [homelab] Pod crash looping – api in prod, worker in prod`. The
+"what" comes from each rule's `subject` annotation.
 Grafana posts a resolve as a new message, not as a reply to the original, so
 the title is what pairs them up. Change it with `notifications.title_template`,
 or set a channel's own `title` or `subject`.
@@ -81,6 +87,48 @@ or set a channel's own `title` or `subject`.
 Grafana posts to Slack as "Grafana" unless you set `slack.username`, for
 example to your Slack app's name. With a bot token, that needs the
 `chat:write.customize` scope.
+
+## Installing the stack
+
+The root module only manages Grafana content, so it works with a monitoring
+stack you already run. For a cluster with nothing installed, `modules/stack`
+installs the pieces with Helm, each behind its own flag:
+
+```hcl
+module "stack" {
+  source = "github.com/Mosher-Labs/terraform-kubernetes-observability//modules/stack?ref=<commit-sha>"  # vX.Y.Z
+
+  alloy = { enabled = true }
+  blackbox_exporter = {
+    enabled = true
+    targets = [
+      { name = "homepage", url = "https://example.com" },
+      { name = "api", url = "https://api.example.com/healthz" },
+    ]
+  }
+  cluster_name          = "lab"
+  kube_prometheus_stack = { enabled = true }
+  loki                  = { enabled = true }
+}
+```
+
+Every component pins its chart version, which you can override, and takes
+extra Helm values files that apply after the module's. Loki defaults to a single
+binary with filesystem storage, which suits small clusters. For larger ones,
+switch its deployment mode and storage through `loki.values`.
+
+Pass `module.stack.prometheus_datasource_uid` to the root module. Both can live
+in one root as long as Terraform can reach the new Grafana; see
+[examples/stack](examples/stack).
+
+### Synthetic checks
+
+Each `blackbox_exporter.targets` entry is probed every `interval` (default
+60s) with the blackbox exporter's `module` (default `http_2xx`). The
+synthetics alerts fire when a check fails for 2 minutes, takes over 5 seconds,
+or its TLS certificate expires within 14 days (warning) or 3 days (critical).
+The probes run inside the cluster, so they can't tell you the cluster itself is
+down. Pair them with a check from outside for that.
 
 ## Cluster types
 
@@ -101,30 +149,34 @@ traffic. Override any rule by ID with `alerts.overrides`, or remove it with
 
 | ID | Group | Alert | Fires when | Severity | Notes |
 | --- | --- | --- | --- | --- | --- |
-| `pod_crash_looping` | pods | Pod crash looping | > 5 for 1m | critical | |
 | `container_oom_killed` | pods | Container OOM killed | > 0 for 0s | warning | |
-| `pod_waiting_failure` | pods | Pod cannot start | > 0 for 5m | critical | |
+| `pod_crash_looping` | pods | Pod crash looping | > 5 for 1m | critical | |
 | `pod_pending` | pods | Pod stuck pending | > 0 for 5m | warning | |
+| `pod_waiting_failure` | pods | Pod cannot start | > 0 for 5m | critical | |
+| `daemonset_not_ready` | workloads | DaemonSet pods not ready | > 0 for 15m | warning | |
+| `deployment_rollout_stuck` | workloads | Deployment rollout stuck | > 0 for 5m | warning | |
 | `deployment_unavailable` | workloads | Deployment has no available replicas | > 0 for 5m | critical | |
 | `deployment_under_replicated` | workloads | Deployment under-replicated | > 0 for 10m | warning | |
-| `deployment_rollout_stuck` | workloads | Deployment rollout stuck | > 0 for 5m | warning | |
-| `statefulset_under_replicated` | workloads | StatefulSet under-replicated | > 0 for 15m | warning | |
-| `daemonset_not_ready` | workloads | DaemonSet pods not ready | > 0 for 15m | warning | |
 | `hpa_at_max` | workloads | HPA pinned at max replicas | > 0.999 for 30m | warning | |
-| `container_memory_near_limit_warning` | resources | Container memory near limit | > 80 for 10m | warning | |
-| `container_memory_near_limit_critical` | resources | Container memory at limit | > 90 for 5m | critical | |
-| `container_cpu_near_limit_warning` | resources | Container CPU near limit | > 80 for 15m | warning | |
+| `statefulset_under_replicated` | workloads | StatefulSet under-replicated | > 0 for 15m | warning | |
 | `container_cpu_near_limit_critical` | resources | Container CPU at limit | > 90 for 15m | critical | |
+| `container_cpu_near_limit_warning` | resources | Container CPU near limit | > 80 for 15m | warning | |
 | `container_cpu_throttled` | resources | Container CPU throttled | > 25 for 15m | warning | |
 | `container_ephemeral_storage_near_limit` | resources | Container ephemeral storage near limit | > 80 for 5m | critical | |
-| `pvc_near_full_warning` | resources | PersistentVolumeClaim almost full | > 80 for 10m | warning | |
+| `container_memory_near_limit_critical` | resources | Container memory at limit | > 90 for 5m | critical | |
+| `container_memory_near_limit_warning` | resources | Container memory near limit | > 80 for 10m | warning | |
 | `pvc_near_full_critical` | resources | PersistentVolumeClaim critically full | > 90 for 5m | critical | |
-| `node_not_ready` | nodes | Node not ready | > 0 for 2m | critical | |
-| `node_pressure` | nodes | Node under resource pressure | > 0 for 5m | warning | |
+| `pvc_near_full_warning` | resources | PersistentVolumeClaim almost full | > 80 for 10m | warning | |
 | `node_disk_full` | nodes | Node disk almost full | > 85 for 10m | critical | |
 | `node_memory_high` | nodes | Node memory high | > 90 for 10m | warning | |
 | `node_network_errors` | nodes | Node network errors | > 1 for 10m | warning | |
+| `node_not_ready` | nodes | Node not ready | > 0 for 2m | critical | |
+| `node_pressure` | nodes | Node under resource pressure | > 0 for 5m | warning | |
 | `scrape_target_down` | nodes | Metrics target down | < 1 for 10m | warning | |
+| `synthetic_check_failing` | synthetics | Synthetic check failing | < 1 for 2m | critical | Needs blackbox probes |
+| `synthetic_check_slow` | synthetics | Synthetic check slow | > 5 for 10m | warning | Needs blackbox probes |
+| `tls_certificate_expiring_critical` | synthetics | TLS certificate about to expire | < 3 for 1h | critical | Needs blackbox probes |
+| `tls_certificate_expiring_warning` | synthetics | TLS certificate expiring soon | < 14 for 1h | warning | Needs blackbox probes |
 | `apiserver_errors` | control-plane | API server error rate high | > 5 for 10m | critical | Needs `apiserver` metrics |
 | `etcd_no_leader` | control-plane | etcd member has no leader | < 1 for 1m | critical | Needs `etcd` metrics |
 

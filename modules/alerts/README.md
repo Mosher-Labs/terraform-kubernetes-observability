@@ -70,6 +70,6 @@ module "alerts" {
 | ---- | ----------- |
 | folder\_uid | UID of the Grafana folder that holds the rules. |
 | rule\_ids | IDs of the rules that were created, after cluster type, disabled\_rules and control\_plane are applied. |
-| rules | The rules as created: group, title, query, threshold, pending period and severity, keyed by rule ID. |
+| rules | The rules as created: group, title, subject, query, threshold, pending period and severity, keyed by rule ID. |
 <!-- END_TF_DOCS -->
 <!-- markdownlint-enable -->

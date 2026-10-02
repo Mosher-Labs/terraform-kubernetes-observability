@@ -7,7 +7,9 @@ others) working in this repository. Human contributors should read
 ## Project
 
 A Terraform module that creates Kubernetes alerting in Grafana. The root module
-wires together the submodules in `modules/`. The alert catalog lives in
+wires together `modules/alerts` and `modules/notifications`. `modules/stack`
+installs the monitoring stack with Helm and is called on its own, so the root
+module never needs a Helm provider. The alert catalog lives in
 `modules/alerts/catalog.tf`. Tests in `tests/` use `terraform test` with a
 mocked Grafana provider.
 
