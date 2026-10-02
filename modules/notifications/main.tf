@@ -14,6 +14,7 @@ resource "grafana_contact_point" "this" {
   dynamic "slack" {
     for_each = local.slack_enabled ? [1] : []
     content {
+      icon_url        = try(coalesce(var.slack.icon_url, var.icon_url), null)
       mention_channel = var.slack.mention_channel
       recipient       = var.slack.recipient
       text            = var.slack.text

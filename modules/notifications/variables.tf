@@ -14,6 +14,12 @@ variable "email" {
   })
 }
 
+variable "icon_url" {
+  default     = null
+  description = "URL of an image to show as the sender's avatar, on channels that allow it per message: Slack. Webex and Teams take the avatar from the bot or app that posts; see docs/notifications.md."
+  type        = string
+}
+
 variable "manage_notification_policy" {
   default     = true
   description = "Whether to manage the Grafana organization's notification policy tree. Grafana has one tree per organization, so this replaces any policies created elsewhere. Set false to route alerts yourself, using the `cluster` and `severity` labels."
@@ -37,6 +43,7 @@ variable "slack" {
   description = "Slack channel. Set `url` to an incoming webhook URL, or `token` and `recipient` for a bot token and channel. Null disables it."
   sensitive   = true
   type = object({
+    icon_url        = optional(string)
     mention_channel = optional(string)
     recipient       = optional(string)
     text            = optional(string)

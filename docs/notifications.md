@@ -11,6 +11,25 @@ Every channel gets the same title, for example
 `✅ RESOLVED: ...` when the alert clears. Resolves arrive as new messages, so
 the title is what pairs them up.
 
+## Sender avatar
+
+Set `notifications.icon_url` to an image URL to use it as the sender's avatar
+wherever the service allows it per message:
+
+| Channel | Avatar |
+| --- | --- |
+| Slack | `icon_url` applies to every message. With a bot token, the app needs the `chat:write.customize` scope. |
+| Webex, incoming webhook | Fixed by Webex: the webhook's initial. Use a bot for a custom avatar. |
+| Webex, bot | The bot's avatar, set when you create the bot at <https://developer.webex.com/my-apps>. |
+| Teams | The Workflows app's avatar. It can't be changed. |
+| Email | None. |
+
+```hcl
+notifications = {
+  icon_url = "https://example.com/logo.png"
+}
+```
+
 ## Slack
 
 Two options.
