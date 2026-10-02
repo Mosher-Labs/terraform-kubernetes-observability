@@ -1,21 +1,21 @@
 variable "alerts" {
+  default     = {}
   description = "Alert catalog settings. See modules/alerts for each field."
   type = object({
-    enabled                     = optional(bool, true)
     control_plane               = optional(object({ apiserver = optional(bool), etcd = optional(bool) }), {})
     disabled_rules              = optional(set(string), [])
+    enabled                     = optional(bool, true)
     evaluation_interval_seconds = optional(number, 60)
     folder_title                = optional(string)
     labels                      = optional(map(string), {})
     overrides = optional(map(object({
-      threshold = optional(number)
-      for       = optional(string)
-      severity  = optional(string)
-      paused    = optional(bool)
+      paused         = optional(bool)
+      pending_period = optional(string)
+      severity       = optional(string)
+      threshold      = optional(number)
     })), {})
     workload_selector = optional(string, "")
   })
-  default = {}
 }
 
 variable "cluster_name" {
@@ -24,33 +24,33 @@ variable "cluster_name" {
 }
 
 variable "cluster_type" {
+  default     = "generic"
   description = "Kind of cluster: eks, aks, gke, openshift, k3s or generic. Decides which control-plane rules apply."
   type        = string
-  default     = "generic"
 }
 
 variable "notifications" {
+  default     = {}
   description = "Where alerts go. Turn on any combination of channels by setting them; see modules/notifications. Set `enabled = false` to manage contact points yourself."
   type = object({
-    enabled                    = optional(bool, true)
-    contact_point_name         = optional(string)
-    manage_notification_policy = optional(bool, true)
-    title_template             = optional(string)
+    contact_point_name = optional(string)
     email = optional(object({
       addresses    = list(string)
+      message      = optional(string)
       single_email = optional(bool, true)
       subject      = optional(string)
-      message      = optional(string)
     }))
+    enabled                    = optional(bool, true)
+    manage_notification_policy = optional(bool, true)
     policy = optional(object({
-      group_by                 = optional(list(string), ["grafana_folder", "alertname", "cluster"])
-      group_wait               = optional(string, "30s")
-      group_interval           = optional(string, "5m")
       critical_repeat_interval = optional(string, "1h")
+      group_by                 = optional(list(string), ["grafana_folder", "alertname", "cluster"])
+      group_interval           = optional(string, "5m")
+      group_wait               = optional(string, "30s")
       warning_repeat_interval  = optional(string, "4h")
     }), {})
+    title_template = optional(string)
   })
-  default = {}
 }
 
 variable "prometheus_datasource_uid" {
@@ -59,40 +59,40 @@ variable "prometheus_datasource_uid" {
 }
 
 variable "slack" {
+  default     = null
   description = "Slack channel: an incoming webhook `url`, or a bot `token` and `recipient`. Null disables it."
+  sensitive   = true
   type = object({
-    url             = optional(string)
-    token           = optional(string)
-    recipient       = optional(string)
-    username        = optional(string)
     mention_channel = optional(string)
-    title           = optional(string)
+    recipient       = optional(string)
     text            = optional(string)
+    title           = optional(string)
+    token           = optional(string)
+    url             = optional(string)
+    username        = optional(string)
   })
-  default   = null
-  sensitive = true
 }
 
 variable "teams" {
+  default     = null
   description = "Microsoft Teams channel: a Teams Workflows webhook `url`. Null disables it."
+  sensitive   = true
   type = object({
-    url           = string
-    title         = optional(string)
-    section_title = optional(string)
     message       = optional(string)
+    section_title = optional(string)
+    title         = optional(string)
+    url           = string
   })
-  default   = null
-  sensitive = true
 }
 
 variable "webex" {
+  default     = null
   description = "Webex channel: a bot `token` and `room_id`. Null disables it."
+  sensitive   = true
   type = object({
-    token   = string
-    room_id = string
     api_url = optional(string)
     message = optional(string)
+    room_id = string
+    token   = string
   })
-  default   = null
-  sensitive = true
 }

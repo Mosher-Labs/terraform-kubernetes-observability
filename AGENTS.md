@@ -31,6 +31,13 @@ mocked Grafana provider.
   `overrides` and `disabled_rules`.
 - **Avoid cumulative-counter thresholds.** Alert on `increase()` or `rate()`
   over a window, so an alert resolves once the problem stops.
+- **Alphabetize** variable and output blocks, and the attributes inside every
+  block, object type and object value. Meta-arguments (`count`, `for_each`,
+  `source`) come first, nested blocks after attributes, and `lifecycle` last.
+  Catalog rules are alphabetical within each section. Keep `locals` in
+  `locals.tf`.
+- **Supported Terraform versions** are `required_version` (1.15) through the
+  newest in the CI matrix. Raise the floor and the matrix together.
 - **Pin GitHub Actions** and reusable workflows to a full commit SHA with the
   version in a trailing comment. Hook images use `tag@sha256:<digest>`.
 - **Provider constraints** stay ranges with a major-version cap

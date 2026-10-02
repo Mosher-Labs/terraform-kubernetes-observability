@@ -3,6 +3,11 @@ output "contact_point_name" {
   value       = grafana_contact_point.this.name
 }
 
+output "contact_point_title" {
+  description = "The title template the contact point uses."
+  value       = var.title_template
+}
+
 output "enabled_channels" {
   description = "The notification channels that are turned on."
   value = compact([
@@ -11,9 +16,4 @@ output "enabled_channels" {
     local.teams_enabled ? "teams" : "",
     local.webex_enabled ? "webex" : "",
   ])
-}
-
-output "contact_point_title" {
-  description = "The title template the contact point uses."
-  value       = var.title_template
 }

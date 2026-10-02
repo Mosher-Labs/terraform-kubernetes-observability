@@ -4,7 +4,7 @@ Thanks for helping. Issues and pull requests are welcome.
 
 ## Setup
 
-You need Terraform 1.5 or later (CI uses 1.16), Docker (for the pinned hook
+You need Terraform 1.15 or later (CI tests 1.15 and 1.16), Docker (for the pinned hook
 images), and [pre-commit](https://pre-commit.com).
 
 ```bash

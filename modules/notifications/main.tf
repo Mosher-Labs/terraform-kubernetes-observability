@@ -1,15 +1,3 @@
-locals {
-  # The channel variables are sensitive, and Terraform refuses to expand a
-  # dynamic block over a sensitive collection. Whether a channel is enabled
-  # reveals nothing secret, so compute that much outside the mark.
-  slack_enabled = nonsensitive(var.slack != null)
-  teams_enabled = nonsensitive(var.teams != null)
-  webex_enabled = nonsensitive(var.webex != null)
-  email_enabled = var.email != null
-
-  any_enabled = local.slack_enabled || local.teams_enabled || local.webex_enabled || local.email_enabled
-}
-
 resource "grafana_contact_point" "this" {
   name = var.contact_point_name
 
@@ -17,42 +5,42 @@ resource "grafana_contact_point" "this" {
     for_each = local.email_enabled ? [1] : []
     content {
       addresses    = var.email.addresses
+      message      = var.email.message
       single_email = var.email.single_email
       subject      = coalesce(var.email.subject, var.title_template)
-      message      = var.email.message
     }
   }
 
   dynamic "slack" {
     for_each = local.slack_enabled ? [1] : []
     content {
-      url             = var.slack.url
-      token           = var.slack.token
-      recipient       = var.slack.recipient
-      username        = var.slack.username
       mention_channel = var.slack.mention_channel
-      title           = coalesce(var.slack.title, var.title_template)
+      recipient       = var.slack.recipient
       text            = var.slack.text
+      title           = coalesce(var.slack.title, var.title_template)
+      token           = var.slack.token
+      url             = var.slack.url
+      username        = var.slack.username
     }
   }
 
   dynamic "teams" {
     for_each = local.teams_enabled ? [1] : []
     content {
-      url           = var.teams.url
-      title         = coalesce(var.teams.title, var.title_template)
-      section_title = var.teams.section_title
       message       = var.teams.message
+      section_title = var.teams.section_title
+      title         = coalesce(var.teams.title, var.title_template)
+      url           = var.teams.url
     }
   }
 
   dynamic "webex" {
     for_each = local.webex_enabled ? [1] : []
     content {
-      token   = var.webex.token
-      room_id = var.webex.room_id
       api_url = var.webex.api_url
       message = var.webex.message
+      room_id = var.webex.room_id
+      token   = var.webex.token
     }
   }
 
@@ -69,8 +57,8 @@ resource "grafana_notification_policy" "this" {
 
   contact_point   = grafana_contact_point.this.name
   group_by        = var.policy.group_by
-  group_wait      = var.policy.group_wait
   group_interval  = var.policy.group_interval
+  group_wait      = var.policy.group_wait
   repeat_interval = var.policy.warning_repeat_interval
 
   policy {

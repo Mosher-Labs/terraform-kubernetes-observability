@@ -97,7 +97,7 @@ run "disabled_rules_and_overrides" {
     cluster_name   = "homelab"
     disabled_rules = ["node_network_errors"]
     overrides = {
-      node_disk_full = { threshold = 90, severity = "warning", for = "30m" }
+      node_disk_full = { pending_period = "30m", severity = "warning", threshold = 90 }
     }
   }
 
@@ -107,7 +107,7 @@ run "disabled_rules_and_overrides" {
   }
 
   assert {
-    condition     = output.rules.node_disk_full.threshold == 90 && output.rules.node_disk_full.severity == "warning" && output.rules.node_disk_full.for == "30m"
+    condition     = output.rules.node_disk_full.threshold == 90 && output.rules.node_disk_full.severity == "warning" && output.rules.node_disk_full.pending_period == "30m"
     error_message = "Overrides should replace the threshold, severity and pending period."
   }
 

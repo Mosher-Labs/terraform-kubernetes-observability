@@ -2,7 +2,7 @@
 # example from kube-prometheus-stack), sent to Slack and email.
 
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.15.0"
 
   required_providers {
     grafana = {
@@ -12,21 +12,21 @@ terraform {
   }
 }
 
+variable "grafana_token" {
+  description = "Grafana service account token with permission to manage alerting and folders."
+  sensitive   = true
+  type        = string
+}
+
 variable "grafana_url" {
   description = "URL of the Grafana instance."
   type        = string
 }
 
-variable "grafana_token" {
-  description = "Grafana service account token with permission to manage alerting and folders."
-  type        = string
-  sensitive   = true
-}
-
 variable "slack_webhook_url" {
   description = "Slack incoming webhook URL."
-  type        = string
   sensitive   = true
+  type        = string
 }
 
 provider "grafana" {
@@ -37,23 +37,20 @@ provider "grafana" {
 module "observability" {
   source = "../.."
 
-  cluster_name              = "homelab"
-  cluster_type              = "k3s"
-  prometheus_datasource_uid = "prometheus"
-
   alerts = {
-    # Leave out noisy system namespaces.
-    workload_selector = "namespace!~\"kube-system|kube-node-lease\""
     overrides = {
       node_disk_full = { threshold = 90 }
     }
+    # Leave out noisy system namespaces.
+    workload_selector = "namespace!~\"kube-system|kube-node-lease\""
   }
-
-  slack = { url = var.slack_webhook_url }
-
+  cluster_name = "homelab"
+  cluster_type = "k3s"
   notifications = {
     email = { addresses = ["oncall@example.com"] }
   }
+  prometheus_datasource_uid = "prometheus"
+  slack                     = { url = var.slack_webhook_url }
 }
 
 output "alert_rule_ids" {

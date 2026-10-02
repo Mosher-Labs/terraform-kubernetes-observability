@@ -12,277 +12,277 @@
 locals {
   catalog = {
     # ── Pods ──────────────────────────────────────────────────────────────
-    pod_crash_looping = {
-      group     = "pods"
-      title     = "Pod crash looping"
-      expr      = "sum by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total{__SEL__}[15m]))"
-      operator  = "gt"
-      threshold = 5
-      for       = "1m"
-      severity  = "critical"
-      summary   = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) restarted more than 5 times in 15 minutes."
-    }
     container_oom_killed = {
-      group     = "pods"
-      title     = "Container OOM killed"
-      expr      = "sum by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total{__SEL__}[15m]) > 0 and on (namespace, pod, container) kube_pod_container_status_last_terminated_reason{reason=\"OOMKilled\",__SEL__} == 1)"
-      operator  = "gt"
-      threshold = 0
-      for       = "0s"
-      severity  = "warning"
-      summary   = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) was OOM killed in the last 15 minutes. Raise its memory limit or find the leak."
+      expr           = "sum by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total{__SEL__}[15m]) > 0 and on (namespace, pod, container) kube_pod_container_status_last_terminated_reason{reason=\"OOMKilled\",__SEL__} == 1)"
+      group          = "pods"
+      operator       = "gt"
+      pending_period = "0s"
+      severity       = "warning"
+      summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) was OOM killed in the last 15 minutes. Raise its memory limit or find the leak."
+      threshold      = 0
+      title          = "Container OOM killed"
     }
-    pod_waiting_failure = {
-      group     = "pods"
-      title     = "Pod cannot start"
-      expr      = "max by (namespace, pod, container, reason) (kube_pod_container_status_waiting_reason{reason=~\"CrashLoopBackOff|ImagePullBackOff|ErrImagePull|CreateContainerConfigError|InvalidImageName\",__SEL__})"
-      operator  = "gt"
-      threshold = 0
-      for       = "5m"
-      severity  = "critical"
-      summary   = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) has been waiting in {{ $labels.reason }} for 5 minutes."
+    pod_crash_looping = {
+      expr           = "sum by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total{__SEL__}[15m]))"
+      group          = "pods"
+      operator       = "gt"
+      pending_period = "1m"
+      severity       = "critical"
+      summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) restarted more than 5 times in 15 minutes."
+      threshold      = 5
+      title          = "Pod crash looping"
     }
     pod_pending = {
-      group     = "pods"
-      title     = "Pod stuck pending"
-      expr      = "max by (namespace, pod) (kube_pod_status_phase{phase=\"Pending\",__SEL__})"
-      operator  = "gt"
-      threshold = 0
-      for       = "5m"
-      severity  = "warning"
-      summary   = "{{ $labels.namespace }}/{{ $labels.pod }} has been pending for 5 minutes. Check for unschedulable resources, taints or unbound volumes."
+      expr           = "max by (namespace, pod) (kube_pod_status_phase{phase=\"Pending\",__SEL__})"
+      group          = "pods"
+      operator       = "gt"
+      pending_period = "5m"
+      severity       = "warning"
+      summary        = "{{ $labels.namespace }}/{{ $labels.pod }} has been pending for 5 minutes. Check for unschedulable resources, taints or unbound volumes."
+      threshold      = 0
+      title          = "Pod stuck pending"
+    }
+    pod_waiting_failure = {
+      expr           = "max by (namespace, pod, container, reason) (kube_pod_container_status_waiting_reason{reason=~\"CrashLoopBackOff|ImagePullBackOff|ErrImagePull|CreateContainerConfigError|InvalidImageName\",__SEL__})"
+      group          = "pods"
+      operator       = "gt"
+      pending_period = "5m"
+      severity       = "critical"
+      summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) has been waiting in {{ $labels.reason }} for 5 minutes."
+      threshold      = 0
+      title          = "Pod cannot start"
     }
 
     # ── Workloads ─────────────────────────────────────────────────────────
-    deployment_unavailable = {
-      group     = "workloads"
-      title     = "Deployment has no available replicas"
-      expr      = "max by (namespace, deployment) (kube_deployment_spec_replicas{__SEL__} > 0 unless on (namespace, deployment) kube_deployment_status_replicas_available{__SEL__} > 0)"
-      operator  = "gt"
-      threshold = 0
-      for       = "5m"
-      severity  = "critical"
-      summary   = "{{ $labels.namespace }}/{{ $labels.deployment }} wants replicas but has none available."
-    }
-    deployment_under_replicated = {
-      group     = "workloads"
-      title     = "Deployment under-replicated"
-      expr      = "max by (namespace, deployment) (kube_deployment_spec_replicas{__SEL__} - kube_deployment_status_replicas_available{__SEL__})"
-      operator  = "gt"
-      threshold = 0
-      for       = "10m"
-      severity  = "warning"
-      summary   = "{{ $labels.namespace }}/{{ $labels.deployment }} has had fewer available replicas than desired for 10 minutes."
+    daemonset_not_ready = {
+      expr           = "max by (namespace, daemonset) (kube_daemonset_status_desired_number_scheduled{__SEL__} - kube_daemonset_status_number_ready{__SEL__})"
+      group          = "workloads"
+      operator       = "gt"
+      pending_period = "15m"
+      severity       = "warning"
+      summary        = "{{ $labels.namespace }}/{{ $labels.daemonset }} has had pods not ready for 15 minutes."
+      threshold      = 0
+      title          = "DaemonSet pods not ready"
     }
     deployment_rollout_stuck = {
-      group     = "workloads"
-      title     = "Deployment rollout stuck"
-      expr      = "max by (namespace, deployment) (kube_deployment_status_condition{condition=\"Progressing\",status=\"false\",__SEL__})"
-      operator  = "gt"
-      threshold = 0
-      for       = "5m"
-      severity  = "warning"
-      summary   = "{{ $labels.namespace }}/{{ $labels.deployment }} passed its progress deadline without finishing the rollout."
+      expr           = "max by (namespace, deployment) (kube_deployment_status_condition{condition=\"Progressing\",status=\"false\",__SEL__})"
+      group          = "workloads"
+      operator       = "gt"
+      pending_period = "5m"
+      severity       = "warning"
+      summary        = "{{ $labels.namespace }}/{{ $labels.deployment }} passed its progress deadline without finishing the rollout."
+      threshold      = 0
+      title          = "Deployment rollout stuck"
     }
-    statefulset_under_replicated = {
-      group     = "workloads"
-      title     = "StatefulSet under-replicated"
-      expr      = "max by (namespace, statefulset) (kube_statefulset_replicas{__SEL__} - kube_statefulset_status_replicas_ready{__SEL__})"
-      operator  = "gt"
-      threshold = 0
-      for       = "15m"
-      severity  = "warning"
-      summary   = "{{ $labels.namespace }}/{{ $labels.statefulset }} has had fewer ready replicas than desired for 15 minutes."
+    deployment_unavailable = {
+      expr           = "max by (namespace, deployment) (kube_deployment_spec_replicas{__SEL__} > 0 unless on (namespace, deployment) kube_deployment_status_replicas_available{__SEL__} > 0)"
+      group          = "workloads"
+      operator       = "gt"
+      pending_period = "5m"
+      severity       = "critical"
+      summary        = "{{ $labels.namespace }}/{{ $labels.deployment }} wants replicas but has none available."
+      threshold      = 0
+      title          = "Deployment has no available replicas"
     }
-    daemonset_not_ready = {
-      group     = "workloads"
-      title     = "DaemonSet pods not ready"
-      expr      = "max by (namespace, daemonset) (kube_daemonset_status_desired_number_scheduled{__SEL__} - kube_daemonset_status_number_ready{__SEL__})"
-      operator  = "gt"
-      threshold = 0
-      for       = "15m"
-      severity  = "warning"
-      summary   = "{{ $labels.namespace }}/{{ $labels.daemonset }} has had pods not ready for 15 minutes."
+    deployment_under_replicated = {
+      expr           = "max by (namespace, deployment) (kube_deployment_spec_replicas{__SEL__} - kube_deployment_status_replicas_available{__SEL__})"
+      group          = "workloads"
+      operator       = "gt"
+      pending_period = "10m"
+      severity       = "warning"
+      summary        = "{{ $labels.namespace }}/{{ $labels.deployment }} has had fewer available replicas than desired for 10 minutes."
+      threshold      = 0
+      title          = "Deployment under-replicated"
     }
     hpa_at_max = {
-      group     = "workloads"
-      title     = "HPA pinned at max replicas"
-      expr      = "max by (namespace, horizontalpodautoscaler) (kube_horizontalpodautoscaler_status_current_replicas{__SEL__} / kube_horizontalpodautoscaler_spec_max_replicas{__SEL__})"
-      operator  = "gt"
-      threshold = 0.999
-      for       = "30m"
-      severity  = "warning"
-      summary   = "{{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler }} has run at its maximum replicas for 30 minutes and can't scale further."
+      expr           = "max by (namespace, horizontalpodautoscaler) (kube_horizontalpodautoscaler_status_current_replicas{__SEL__} / kube_horizontalpodautoscaler_spec_max_replicas{__SEL__})"
+      group          = "workloads"
+      operator       = "gt"
+      pending_period = "30m"
+      severity       = "warning"
+      summary        = "{{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler }} has run at its maximum replicas for 30 minutes and can't scale further."
+      threshold      = 0.999
+      title          = "HPA pinned at max replicas"
+    }
+    statefulset_under_replicated = {
+      expr           = "max by (namespace, statefulset) (kube_statefulset_replicas{__SEL__} - kube_statefulset_status_replicas_ready{__SEL__})"
+      group          = "workloads"
+      operator       = "gt"
+      pending_period = "15m"
+      severity       = "warning"
+      summary        = "{{ $labels.namespace }}/{{ $labels.statefulset }} has had fewer ready replicas than desired for 15 minutes."
+      threshold      = 0
+      title          = "StatefulSet under-replicated"
     }
 
     # ── Resources ─────────────────────────────────────────────────────────
-    container_memory_near_limit_warning = {
-      group     = "resources"
-      title     = "Container memory near limit"
-      expr      = "100 * max by (namespace, pod, container) (container_memory_working_set_bytes{container!=\"\",__SEL__} / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"memory\",__SEL__})"
-      operator  = "gt"
-      threshold = 80
-      for       = "10m"
-      severity  = "warning"
-      summary   = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its memory limit."
-    }
-    container_memory_near_limit_critical = {
-      group     = "resources"
-      title     = "Container memory at limit"
-      expr      = "100 * max by (namespace, pod, container) (container_memory_working_set_bytes{container!=\"\",__SEL__} / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"memory\",__SEL__})"
-      operator  = "gt"
-      threshold = 90
-      for       = "5m"
-      severity  = "critical"
-      summary   = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its memory limit and will be OOM killed at 100%."
+    container_cpu_near_limit_critical = {
+      expr           = "100 * max by (namespace, pod, container) (rate(container_cpu_usage_seconds_total{container!=\"\",__SEL__}[5m]) / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"cpu\",__SEL__})"
+      group          = "resources"
+      operator       = "gt"
+      pending_period = "15m"
+      severity       = "critical"
+      summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its CPU limit."
+      threshold      = 90
+      title          = "Container CPU at limit"
     }
     container_cpu_near_limit_warning = {
-      group     = "resources"
-      title     = "Container CPU near limit"
-      expr      = "100 * max by (namespace, pod, container) (rate(container_cpu_usage_seconds_total{container!=\"\",__SEL__}[5m]) / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"cpu\",__SEL__})"
-      operator  = "gt"
-      threshold = 80
-      for       = "15m"
-      severity  = "warning"
-      summary   = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its CPU limit."
-    }
-    container_cpu_near_limit_critical = {
-      group     = "resources"
-      title     = "Container CPU at limit"
-      expr      = "100 * max by (namespace, pod, container) (rate(container_cpu_usage_seconds_total{container!=\"\",__SEL__}[5m]) / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"cpu\",__SEL__})"
-      operator  = "gt"
-      threshold = 90
-      for       = "15m"
-      severity  = "critical"
-      summary   = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its CPU limit."
+      expr           = "100 * max by (namespace, pod, container) (rate(container_cpu_usage_seconds_total{container!=\"\",__SEL__}[5m]) / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"cpu\",__SEL__})"
+      group          = "resources"
+      operator       = "gt"
+      pending_period = "15m"
+      severity       = "warning"
+      summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its CPU limit."
+      threshold      = 80
+      title          = "Container CPU near limit"
     }
     # Average usage hides throttling: a container can sit well under its
     # limit on average and still be throttled in most scheduler periods.
     container_cpu_throttled = {
-      group     = "resources"
-      title     = "Container CPU throttled"
-      expr      = "100 * max by (namespace, pod, container) (increase(container_cpu_cfs_throttled_periods_total{container!=\"\",__SEL__}[5m]) / increase(container_cpu_cfs_periods_total{container!=\"\",__SEL__}[5m]))"
-      operator  = "gt"
-      threshold = 25
-      for       = "15m"
-      severity  = "warning"
-      summary   = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) was throttled in {{ humanize $values.A.Value }}% of CPU periods."
+      expr           = "100 * max by (namespace, pod, container) (increase(container_cpu_cfs_throttled_periods_total{container!=\"\",__SEL__}[5m]) / increase(container_cpu_cfs_periods_total{container!=\"\",__SEL__}[5m]))"
+      group          = "resources"
+      operator       = "gt"
+      pending_period = "15m"
+      severity       = "warning"
+      summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) was throttled in {{ humanize $values.A.Value }}% of CPU periods."
+      threshold      = 25
+      title          = "Container CPU throttled"
     }
     container_ephemeral_storage_near_limit = {
-      group     = "resources"
-      title     = "Container ephemeral storage near limit"
-      expr      = "100 * max by (namespace, pod, container) (container_fs_usage_bytes{container!=\"\",__SEL__} / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"ephemeral_storage\",__SEL__})"
-      operator  = "gt"
-      threshold = 80
-      for       = "5m"
-      severity  = "critical"
-      summary   = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its ephemeral storage limit. The kubelet evicts it at 100%."
+      expr           = "100 * max by (namespace, pod, container) (container_fs_usage_bytes{container!=\"\",__SEL__} / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"ephemeral_storage\",__SEL__})"
+      group          = "resources"
+      operator       = "gt"
+      pending_period = "5m"
+      severity       = "critical"
+      summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its ephemeral storage limit. The kubelet evicts it at 100%."
+      threshold      = 80
+      title          = "Container ephemeral storage near limit"
     }
-    pvc_near_full_warning = {
-      group     = "resources"
-      title     = "PersistentVolumeClaim almost full"
-      expr      = "100 * max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_used_bytes{__SEL__} / kubelet_volume_stats_capacity_bytes{__SEL__})"
-      operator  = "gt"
-      threshold = 80
-      for       = "10m"
-      severity  = "warning"
-      summary   = "{{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ humanize $values.A.Value }}% full."
+    container_memory_near_limit_critical = {
+      expr           = "100 * max by (namespace, pod, container) (container_memory_working_set_bytes{container!=\"\",__SEL__} / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"memory\",__SEL__})"
+      group          = "resources"
+      operator       = "gt"
+      pending_period = "5m"
+      severity       = "critical"
+      summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its memory limit and will be OOM killed at 100%."
+      threshold      = 90
+      title          = "Container memory at limit"
+    }
+    container_memory_near_limit_warning = {
+      expr           = "100 * max by (namespace, pod, container) (container_memory_working_set_bytes{container!=\"\",__SEL__} / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"memory\",__SEL__})"
+      group          = "resources"
+      operator       = "gt"
+      pending_period = "10m"
+      severity       = "warning"
+      summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its memory limit."
+      threshold      = 80
+      title          = "Container memory near limit"
     }
     pvc_near_full_critical = {
-      group     = "resources"
-      title     = "PersistentVolumeClaim critically full"
-      expr      = "100 * max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_used_bytes{__SEL__} / kubelet_volume_stats_capacity_bytes{__SEL__})"
-      operator  = "gt"
-      threshold = 90
-      for       = "5m"
-      severity  = "critical"
-      summary   = "{{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ humanize $values.A.Value }}% full."
+      expr           = "100 * max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_used_bytes{__SEL__} / kubelet_volume_stats_capacity_bytes{__SEL__})"
+      group          = "resources"
+      operator       = "gt"
+      pending_period = "5m"
+      severity       = "critical"
+      summary        = "{{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ humanize $values.A.Value }}% full."
+      threshold      = 90
+      title          = "PersistentVolumeClaim critically full"
+    }
+    pvc_near_full_warning = {
+      expr           = "100 * max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_used_bytes{__SEL__} / kubelet_volume_stats_capacity_bytes{__SEL__})"
+      group          = "resources"
+      operator       = "gt"
+      pending_period = "10m"
+      severity       = "warning"
+      summary        = "{{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ humanize $values.A.Value }}% full."
+      threshold      = 80
+      title          = "PersistentVolumeClaim almost full"
     }
 
     # ── Nodes ─────────────────────────────────────────────────────────────
-    node_not_ready = {
-      group     = "nodes"
-      title     = "Node not ready"
-      expr      = "max by (node) (kube_node_status_condition{condition=\"Ready\",status=~\"false|unknown\"})"
-      operator  = "gt"
-      threshold = 0
-      for       = "2m"
-      severity  = "critical"
-      summary   = "Node {{ $labels.node }} has not been Ready for 2 minutes."
-    }
-    node_pressure = {
-      group     = "nodes"
-      title     = "Node under resource pressure"
-      expr      = "max by (node, condition) (kube_node_status_condition{condition=~\"MemoryPressure|DiskPressure|PIDPressure\",status=\"true\"})"
-      operator  = "gt"
-      threshold = 0
-      for       = "5m"
-      severity  = "warning"
-      summary   = "Node {{ $labels.node }} reports {{ $labels.condition }}. The kubelet may start evicting pods."
-    }
     node_disk_full = {
-      group     = "nodes"
-      title     = "Node disk almost full"
-      expr      = "100 * max by (instance, mountpoint) (1 - node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay|squashfs|ramfs\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|overlay|squashfs|ramfs\"})"
-      operator  = "gt"
-      threshold = 85
-      for       = "10m"
-      severity  = "critical"
-      summary   = "{{ $labels.mountpoint }} on {{ $labels.instance }} is {{ humanize $values.A.Value }}% full."
+      expr           = "100 * max by (instance, mountpoint) (1 - node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay|squashfs|ramfs\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|overlay|squashfs|ramfs\"})"
+      group          = "nodes"
+      operator       = "gt"
+      pending_period = "10m"
+      severity       = "critical"
+      summary        = "{{ $labels.mountpoint }} on {{ $labels.instance }} is {{ humanize $values.A.Value }}% full."
+      threshold      = 85
+      title          = "Node disk almost full"
     }
     node_memory_high = {
-      group     = "nodes"
-      title     = "Node memory high"
-      expr      = "100 * max by (instance) (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)"
-      operator  = "gt"
-      threshold = 90
-      for       = "10m"
-      severity  = "warning"
-      summary   = "{{ $labels.instance }} is using {{ humanize $values.A.Value }}% of its memory."
+      expr           = "100 * max by (instance) (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)"
+      group          = "nodes"
+      operator       = "gt"
+      pending_period = "10m"
+      severity       = "warning"
+      summary        = "{{ $labels.instance }} is using {{ humanize $values.A.Value }}% of its memory."
+      threshold      = 90
+      title          = "Node memory high"
     }
     node_network_errors = {
-      group     = "nodes"
-      title     = "Node network errors"
-      expr      = "max by (instance, device) (rate(node_network_receive_errs_total[5m]) + rate(node_network_transmit_errs_total[5m]))"
-      operator  = "gt"
-      threshold = 1
-      for       = "10m"
-      severity  = "warning"
-      summary   = "{{ $labels.device }} on {{ $labels.instance }} has {{ humanize $values.A.Value }} receive/transmit errors per second."
+      expr           = "max by (instance, device) (rate(node_network_receive_errs_total[5m]) + rate(node_network_transmit_errs_total[5m]))"
+      group          = "nodes"
+      operator       = "gt"
+      pending_period = "10m"
+      severity       = "warning"
+      summary        = "{{ $labels.device }} on {{ $labels.instance }} has {{ humanize $values.A.Value }} receive/transmit errors per second."
+      threshold      = 1
+      title          = "Node network errors"
+    }
+    node_not_ready = {
+      expr           = "max by (node) (kube_node_status_condition{condition=\"Ready\",status=~\"false|unknown\"})"
+      group          = "nodes"
+      operator       = "gt"
+      pending_period = "2m"
+      severity       = "critical"
+      summary        = "Node {{ $labels.node }} has not been Ready for 2 minutes."
+      threshold      = 0
+      title          = "Node not ready"
+    }
+    node_pressure = {
+      expr           = "max by (node, condition) (kube_node_status_condition{condition=~\"MemoryPressure|DiskPressure|PIDPressure\",status=\"true\"})"
+      group          = "nodes"
+      operator       = "gt"
+      pending_period = "5m"
+      severity       = "warning"
+      summary        = "Node {{ $labels.node }} reports {{ $labels.condition }}. The kubelet may start evicting pods."
+      threshold      = 0
+      title          = "Node under resource pressure"
     }
     scrape_target_down = {
-      group     = "nodes"
-      title     = "Metrics target down"
-      expr      = "min by (job, namespace, instance) (up)"
-      operator  = "lt"
-      threshold = 1
-      for       = "10m"
-      severity  = "warning"
-      summary   = "Prometheus can't scrape {{ $labels.job }} at {{ $labels.instance }}. Alerts that depend on it go quiet."
+      expr           = "min by (job, namespace, instance) (up)"
+      group          = "nodes"
+      operator       = "lt"
+      pending_period = "10m"
+      severity       = "warning"
+      summary        = "Prometheus can't scrape {{ $labels.job }} at {{ $labels.instance }}. Alerts that depend on it go quiet."
+      threshold      = 1
+      title          = "Metrics target down"
     }
 
     # ── Control plane (self-managed clusters only) ────────────────────────
     apiserver_errors = {
-      group     = "control-plane"
-      title     = "API server error rate high"
-      expr      = "100 * sum(rate(apiserver_request_total{code=~\"5..\"}[5m])) / sum(rate(apiserver_request_total[5m]))"
-      operator  = "gt"
-      threshold = 5
-      for       = "10m"
-      severity  = "critical"
-      summary   = "{{ humanize $values.A.Value }}% of API server requests are failing with 5xx."
-      requires  = "apiserver"
+      expr           = "100 * sum(rate(apiserver_request_total{code=~\"5..\"}[5m])) / sum(rate(apiserver_request_total[5m]))"
+      group          = "control-plane"
+      operator       = "gt"
+      pending_period = "10m"
+      requires       = "apiserver"
+      severity       = "critical"
+      summary        = "{{ humanize $values.A.Value }}% of API server requests are failing with 5xx."
+      threshold      = 5
+      title          = "API server error rate high"
     }
     etcd_no_leader = {
-      group     = "control-plane"
-      title     = "etcd member has no leader"
-      expr      = "min by (instance) (etcd_server_has_leader)"
-      operator  = "lt"
-      threshold = 1
-      for       = "1m"
-      severity  = "critical"
-      summary   = "etcd member {{ $labels.instance }} has no leader and can't serve requests."
-      requires  = "etcd"
+      expr           = "min by (instance) (etcd_server_has_leader)"
+      group          = "control-plane"
+      operator       = "lt"
+      pending_period = "1m"
+      requires       = "etcd"
+      severity       = "critical"
+      summary        = "etcd member {{ $labels.instance }} has no leader and can't serve requests."
+      threshold      = 1
+      title          = "etcd member has no leader"
     }
   }
 }
