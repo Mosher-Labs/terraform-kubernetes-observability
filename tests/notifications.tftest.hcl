@@ -123,7 +123,7 @@ run "default_title_marks_firing_and_resolved" {
 
   assert {
     condition     = nonsensitive(one(grafana_contact_point.this.slack).username == null)
-    error_message = "With no username set, Slack should post under the bot's own name."
+    error_message = "username should stay unset unless the caller sets it."
   }
 }
 

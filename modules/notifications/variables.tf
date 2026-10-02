@@ -38,7 +38,8 @@ variable "slack" {
     url       = optional(string)
     token     = optional(string)
     recipient = optional(string)
-    # Unset posts under the bot's or webhook's own name.
+    # Unset, Grafana posts as "Grafana". A bot token needs the
+    # chat:write.customize scope to post under another name.
     username        = optional(string)
     mention_channel = optional(string)
     title           = optional(string)

@@ -81,7 +81,9 @@ Grafana posts a resolve as a new message, not as a reply to the original, so
 the title is what pairs them up. Change it with `notifications.title_template`,
 or set a channel's own `title` or `subject`.
 
-Leave `slack.username` unset to post under the Slack app's own name.
+Grafana posts to Slack as "Grafana" unless you set `slack.username`, for
+example to your Slack app's name. With a bot token, that needs the
+`chat:write.customize` scope.
 
 ## Cluster types
 
