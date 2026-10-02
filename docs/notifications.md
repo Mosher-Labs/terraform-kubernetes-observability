@@ -104,7 +104,9 @@ Webex-shaped payload (`{"markdown": ...}`): the title in bold, then one line
 per alert's summary. This needs Grafana 12 or later, for custom webhook
 payloads.
 
-**Bot.** Posts as a named bot, through Grafana's built-in Webex integration.
+**Bot.** Posts as a named bot, with the bot's own avatar, through Grafana's
+built-in Webex integration. Messages look the same as the webhook mode's: the
+title in bold, then one line per alert.
 
 1. Create a bot at <https://developer.webex.com/my-apps> and copy its access
    token.

@@ -10,11 +10,12 @@ locals {
   teams_enabled = nonsensitive(var.teams != null)
 
   webex_bot_enabled     = local.webex_enabled && !local.webex_webhook_enabled
+  webex_bot_message     = "{{ $title := tmpl.Inline `${var.title_template}` . }}**{{ $title }}**{{ range .Alerts }}\n- {{ .Annotations.summary }}{{ end }}"
   webex_enabled         = nonsensitive(var.webex != null)
   webex_webhook_enabled = local.webex_enabled && nonsensitive(try(var.webex.webhook_url, null) != null)
 
-  # A Webex incoming webhook takes {"markdown": "..."}: the title in bold, then
-  # one line per alert. The title reuses var.title_template through
+  # Both Webex modes send the title in bold, then one line per alert. The bot
+  # takes it as its message; an incoming webhook takes {"markdown": "..."}. The title reuses var.title_template through
   # tmpl.Inline, which is why that template can't contain backticks.
   webex_webhook_payload = join("", [
     "{{ $title := tmpl.Inline `${var.title_template}` . }}",
