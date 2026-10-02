@@ -208,3 +208,41 @@ run "title_template_rejects_backticks" {
 
   expect_failures = [var.title_template]
 }
+
+run "icon_url_applies_to_slack" {
+  command = plan
+
+  module {
+    source = "./modules/notifications"
+  }
+
+  variables {
+    contact_point_name = "kubernetes-homelab"
+    icon_url           = "https://example.com/logo.png"
+    slack              = { recipient = "C0123456789", token = "xoxb-test" }
+  }
+
+  assert {
+    condition     = nonsensitive(one(grafana_contact_point.this.slack).icon_url == "https://example.com/logo.png")
+    error_message = "The shared icon_url should become Slack's icon."
+  }
+}
+
+run "slack_icon_url_wins" {
+  command = plan
+
+  module {
+    source = "./modules/notifications"
+  }
+
+  variables {
+    contact_point_name = "kubernetes-homelab"
+    icon_url           = "https://example.com/logo.png"
+    slack              = { icon_url = "https://example.com/slack.png", url = "https://hooks.slack.com/services/T000/B000/XXXX" }
+  }
+
+  assert {
+    condition     = nonsensitive(one(grafana_contact_point.this.slack).icon_url == "https://example.com/slack.png")
+    error_message = "A channel's own icon_url should win over the shared one."
+  }
+}

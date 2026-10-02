@@ -93,6 +93,7 @@ variable "notifications" {
       subject      = optional(string)
     }))
     enabled                    = optional(bool, true)
+    icon_url                   = optional(string)
     manage_notification_policy = optional(bool, true)
     policy = optional(object({
       critical_repeat_interval = optional(string, "1h")
@@ -115,6 +116,7 @@ variable "slack" {
   description = "Slack channel: an incoming webhook `url`, or a bot `token` and `recipient`. Null disables it."
   sensitive   = true
   type = object({
+    icon_url        = optional(string)
     mention_channel = optional(string)
     recipient       = optional(string)
     text            = optional(string)

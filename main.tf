@@ -33,6 +33,7 @@ module "notifications" {
 
   contact_point_name         = coalesce(var.notifications.contact_point_name, "kubernetes-${var.cluster_name}")
   email                      = var.notifications.email
+  icon_url                   = var.notifications.icon_url
   manage_notification_policy = var.notifications.manage_notification_policy
   policy                     = var.notifications.policy
   slack                      = var.slack
