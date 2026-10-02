@@ -15,6 +15,8 @@ managed Prometheus, or Grafana Cloud.
   and any rule can be turned off.
 - **Cluster-type aware.** EKS, AKS and GKE don't expose API server or etcd
   metrics, so those rules are only created for self-managed clusters.
+- **An overview dashboard** with cluster health, resources, workloads,
+  synthetic checks, the cluster's firing alerts and, with Loki, error logs.
 - **Notifications** to Slack, email, Webex and Teams. Each channel is optional
   and independent.
 - **Synthetic checks:** probe a list of URLs, and alert when one fails, gets
@@ -24,9 +26,9 @@ managed Prometheus, or Grafana Cloud.
   checks). The pieces are wired together: Grafana gets a Loki datasource, Alloy
   ships to Loki, and Prometheus scrapes the probes.
 - **Submodules you can use on their own:** `modules/alerts`,
-  `modules/notifications` and `modules/stack`.
+  `modules/dashboards`, `modules/notifications` and `modules/stack`.
 
-Planned: dashboards, service-level (APM) and backing-service alerts.
+Planned: service-level (APM) and backing-service alerts.
 
 ## Usage
 
@@ -65,6 +67,13 @@ See [examples/k3s](examples/k3s) for a complete configuration.
   node-exporter, cAdvisor (through the kubelet) and, for control-plane rules,
   the API server and etcd. kube-prometheus-stack provides all of them.
 - Email needs SMTP configured in Grafana.
+
+### Dashboard
+
+The root module also creates an overview dashboard; see
+[modules/dashboards](modules/dashboards) for its panels. Pass
+`dashboards.loki_datasource_uid` to add an error-logs panel, or set
+`dashboards.enabled = false` to skip it. The `dashboard_url` output links to it.
 
 ### Notification policy
 
@@ -211,6 +220,7 @@ credentials. See [CONTRIBUTING.md](CONTRIBUTING.md).
 | Name | Source | Version |
 | ---- | ------ | ------- |
 | alerts | ./modules/alerts | n/a |
+| dashboards | ./modules/dashboards | n/a |
 | notifications | ./modules/notifications | n/a |
 
 ## Inputs
@@ -221,6 +231,7 @@ credentials. See [CONTRIBUTING.md](CONTRIBUTING.md).
 | prometheus\_datasource\_uid | UID of the Prometheus-compatible Grafana datasource the alert rules query. | `string` | n/a | yes |
 | alerts | Alert catalog settings. See modules/alerts for each field. | ```object({ control_plane = optional(object({ apiserver = optional(bool), etcd = optional(bool) }), {}) disabled_rules = optional(set(string), []) enabled = optional(bool, true) evaluation_interval_seconds = optional(number, 60) folder_title = optional(string) labels = optional(map(string), {}) overrides = optional(map(object({ paused = optional(bool) pending_period = optional(string) severity = optional(string) threshold = optional(number) })), {}) workload_selector = optional(string, "") })``` | `{}` | no |
 | cluster\_type | Kind of cluster: eks, aks, gke, openshift, k3s or generic. Decides which control-plane rules apply. | `string` | `"generic"` | no |
+| dashboards | Overview dashboard settings. Set `loki_datasource_uid` to add a logs row. See modules/dashboards. | ```object({ enabled = optional(bool, true) folder_title = optional(string) loki_datasource_uid = optional(string) refresh = optional(string, "1m") })``` | `{}` | no |
 | notifications | Where alerts go. Turn on any combination of channels by setting them; see modules/notifications. Set `enabled = false` to manage contact points yourself. | ```object({ contact_point_name = optional(string) email = optional(object({ addresses = list(string) message = optional(string) single_email = optional(bool, true) subject = optional(string) })) enabled = optional(bool, true) manage_notification_policy = optional(bool, true) policy = optional(object({ critical_repeat_interval = optional(string, "1h") group_by = optional(list(string), ["grafana_folder", "alertname", "cluster"]) group_interval = optional(string, "5m") group_wait = optional(string, "30s") warning_repeat_interval = optional(string, "4h") }), {}) title_template = optional(string) })``` | `{}` | no |
 | slack | Slack channel: an incoming webhook `url`, or a bot `token` and `recipient`. Null disables it. | ```object({ mention_channel = optional(string) recipient = optional(string) text = optional(string) title = optional(string) token = optional(string) url = optional(string) username = optional(string) })``` | `null` | no |
 | teams | Microsoft Teams channel: a Teams Workflows webhook `url`. Null disables it. | ```object({ message = optional(string) section_title = optional(string) title = optional(string) url = string })``` | `null` | no |
@@ -233,6 +244,7 @@ credentials. See [CONTRIBUTING.md](CONTRIBUTING.md).
 | alert\_folder\_uid | UID of the Grafana folder that holds the alert rules, or null when alerts are off. |
 | alert\_rule\_ids | IDs of the alert rules that were created. |
 | contact\_point\_name | Name of the contact point, or null when notifications are off. |
+| dashboard\_url | URL of the overview dashboard, or null when dashboards are off. |
 | enabled\_channels | The notification channels that are turned on. |
 <!-- END_TF_DOCS -->
 <!-- markdownlint-enable -->

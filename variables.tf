@@ -29,6 +29,17 @@ variable "cluster_type" {
   type        = string
 }
 
+variable "dashboards" {
+  default     = {}
+  description = "Overview dashboard settings. Set `loki_datasource_uid` to add a logs row. See modules/dashboards."
+  type = object({
+    enabled             = optional(bool, true)
+    folder_title        = optional(string)
+    loki_datasource_uid = optional(string)
+    refresh             = optional(string, "1m")
+  })
+}
+
 variable "notifications" {
   default     = {}
   description = "Where alerts go. Turn on any combination of channels by setting them; see modules/notifications. Set `enabled = false` to manage contact points yourself."

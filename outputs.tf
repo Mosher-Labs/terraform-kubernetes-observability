@@ -13,6 +13,11 @@ output "contact_point_name" {
   value       = try(module.notifications[0].contact_point_name, null)
 }
 
+output "dashboard_url" {
+  description = "URL of the overview dashboard, or null when dashboards are off."
+  value       = try(module.dashboards[0].dashboard_url, null)
+}
+
 output "enabled_channels" {
   description = "The notification channels that are turned on."
   value       = try(module.notifications[0].enabled_channels, [])

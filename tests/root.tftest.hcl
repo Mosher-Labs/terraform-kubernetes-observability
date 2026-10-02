@@ -49,3 +49,17 @@ run "null_title_template_falls_back_to_default" {
     error_message = "Leaving notifications.title_template unset should use the module default."
   }
 }
+
+run "dashboards_can_be_turned_off" {
+  command = plan
+
+  variables {
+    dashboards    = { enabled = false }
+    notifications = { enabled = false }
+  }
+
+  assert {
+    condition     = output.dashboard_url == null
+    error_message = "dashboards.enabled = false should create no dashboard."
+  }
+}
