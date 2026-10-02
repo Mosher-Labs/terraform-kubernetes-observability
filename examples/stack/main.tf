@@ -75,8 +75,11 @@ module "stack" {
 module "observability" {
   source = "../.."
 
-  cluster_name              = "lab"
-  cluster_type              = "k3s"
+  cluster_name = "lab"
+  cluster_type = "k3s"
+  dashboards = {
+    loki_datasource_uid = module.stack.loki_datasource_uid
+  }
   prometheus_datasource_uid = module.stack.prometheus_datasource_uid
   slack                     = { url = var.slack_webhook_url }
 }

@@ -14,6 +14,17 @@ module "alerts" {
   workload_selector           = var.alerts.workload_selector
 }
 
+module "dashboards" {
+  count  = var.dashboards.enabled ? 1 : 0
+  source = "./modules/dashboards"
+
+  cluster_name              = var.cluster_name
+  folder_title              = var.dashboards.folder_title
+  loki_datasource_uid       = var.dashboards.loki_datasource_uid
+  prometheus_datasource_uid = var.prometheus_datasource_uid
+  refresh                   = var.dashboards.refresh
+}
+
 module "notifications" {
   count  = var.notifications.enabled ? 1 : 0
   source = "./modules/notifications"
