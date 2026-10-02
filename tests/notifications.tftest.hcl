@@ -117,6 +117,11 @@ run "default_title_marks_firing_and_resolved" {
   }
 
   assert {
+    condition     = nonsensitive(strcontains(one(grafana_contact_point.this.slack).title, "Annotations.subject"))
+    error_message = "The default title should name what each alert is about."
+  }
+
+  assert {
     condition     = strcontains(one(grafana_contact_point.this.email).subject, "✅ RESOLVED")
     error_message = "The email subject should default to the title template."
   }

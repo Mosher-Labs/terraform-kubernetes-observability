@@ -21,6 +21,8 @@ resource "grafana_rule_group" "this" {
     for_each = { for id in sort(keys(local.rules)) : id => local.rules[id] if local.rules[id].group == each.key }
     content {
       annotations = {
+        # What the alert is about, such as "api in prod", for short titles.
+        subject = rule.value.subject
         summary = rule.value.summary
       }
       condition      = "B"

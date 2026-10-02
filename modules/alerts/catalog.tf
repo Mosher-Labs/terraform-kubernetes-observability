@@ -18,6 +18,7 @@ locals {
       operator       = "gt"
       pending_period = "0s"
       severity       = "warning"
+      subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) was OOM killed in the last 15 minutes. Raise its memory limit or find the leak."
       threshold      = 0
       title          = "Container OOM killed"
@@ -28,6 +29,7 @@ locals {
       operator       = "gt"
       pending_period = "1m"
       severity       = "critical"
+      subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) restarted more than 5 times in 15 minutes."
       threshold      = 5
       title          = "Pod crash looping"
@@ -38,6 +40,7 @@ locals {
       operator       = "gt"
       pending_period = "5m"
       severity       = "warning"
+      subject        = "{{ $labels.pod }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.pod }} has been pending for 5 minutes. Check for unschedulable resources, taints or unbound volumes."
       threshold      = 0
       title          = "Pod stuck pending"
@@ -48,6 +51,7 @@ locals {
       operator       = "gt"
       pending_period = "5m"
       severity       = "critical"
+      subject        = "{{ $labels.container }} in {{ $labels.namespace }} ({{ $labels.reason }})"
       summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) has been waiting in {{ $labels.reason }} for 5 minutes."
       threshold      = 0
       title          = "Pod cannot start"
@@ -60,6 +64,7 @@ locals {
       operator       = "gt"
       pending_period = "15m"
       severity       = "warning"
+      subject        = "{{ $labels.daemonset }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.daemonset }} has had pods not ready for 15 minutes."
       threshold      = 0
       title          = "DaemonSet pods not ready"
@@ -70,6 +75,7 @@ locals {
       operator       = "gt"
       pending_period = "5m"
       severity       = "warning"
+      subject        = "{{ $labels.deployment }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.deployment }} passed its progress deadline without finishing the rollout."
       threshold      = 0
       title          = "Deployment rollout stuck"
@@ -80,6 +86,7 @@ locals {
       operator       = "gt"
       pending_period = "5m"
       severity       = "critical"
+      subject        = "{{ $labels.deployment }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.deployment }} wants replicas but has none available."
       threshold      = 0
       title          = "Deployment has no available replicas"
@@ -90,6 +97,7 @@ locals {
       operator       = "gt"
       pending_period = "10m"
       severity       = "warning"
+      subject        = "{{ $labels.deployment }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.deployment }} has had fewer available replicas than desired for 10 minutes."
       threshold      = 0
       title          = "Deployment under-replicated"
@@ -100,6 +108,7 @@ locals {
       operator       = "gt"
       pending_period = "30m"
       severity       = "warning"
+      subject        = "{{ $labels.horizontalpodautoscaler }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler }} has run at its maximum replicas for 30 minutes and can't scale further."
       threshold      = 0.999
       title          = "HPA pinned at max replicas"
@@ -110,6 +119,7 @@ locals {
       operator       = "gt"
       pending_period = "15m"
       severity       = "warning"
+      subject        = "{{ $labels.statefulset }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.statefulset }} has had fewer ready replicas than desired for 15 minutes."
       threshold      = 0
       title          = "StatefulSet under-replicated"
@@ -122,6 +132,7 @@ locals {
       operator       = "gt"
       pending_period = "15m"
       severity       = "critical"
+      subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its CPU limit."
       threshold      = 90
       title          = "Container CPU at limit"
@@ -132,6 +143,7 @@ locals {
       operator       = "gt"
       pending_period = "15m"
       severity       = "warning"
+      subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its CPU limit."
       threshold      = 80
       title          = "Container CPU near limit"
@@ -144,6 +156,7 @@ locals {
       operator       = "gt"
       pending_period = "15m"
       severity       = "warning"
+      subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) was throttled in {{ humanize $values.A.Value }}% of CPU periods."
       threshold      = 25
       title          = "Container CPU throttled"
@@ -154,6 +167,7 @@ locals {
       operator       = "gt"
       pending_period = "5m"
       severity       = "critical"
+      subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its ephemeral storage limit. The kubelet evicts it at 100%."
       threshold      = 80
       title          = "Container ephemeral storage near limit"
@@ -164,6 +178,7 @@ locals {
       operator       = "gt"
       pending_period = "5m"
       severity       = "critical"
+      subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its memory limit and will be OOM killed at 100%."
       threshold      = 90
       title          = "Container memory at limit"
@@ -174,6 +189,7 @@ locals {
       operator       = "gt"
       pending_period = "10m"
       severity       = "warning"
+      subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its memory limit."
       threshold      = 80
       title          = "Container memory near limit"
@@ -184,6 +200,7 @@ locals {
       operator       = "gt"
       pending_period = "5m"
       severity       = "critical"
+      subject        = "{{ $labels.persistentvolumeclaim }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ humanize $values.A.Value }}% full."
       threshold      = 90
       title          = "PersistentVolumeClaim critically full"
@@ -194,6 +211,7 @@ locals {
       operator       = "gt"
       pending_period = "10m"
       severity       = "warning"
+      subject        = "{{ $labels.persistentvolumeclaim }} in {{ $labels.namespace }}"
       summary        = "{{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ humanize $values.A.Value }}% full."
       threshold      = 80
       title          = "PersistentVolumeClaim almost full"
@@ -206,6 +224,7 @@ locals {
       operator       = "gt"
       pending_period = "10m"
       severity       = "critical"
+      subject        = "{{ $labels.mountpoint }} on {{ $labels.instance }}"
       summary        = "{{ $labels.mountpoint }} on {{ $labels.instance }} is {{ humanize $values.A.Value }}% full."
       threshold      = 85
       title          = "Node disk almost full"
@@ -216,6 +235,7 @@ locals {
       operator       = "gt"
       pending_period = "10m"
       severity       = "warning"
+      subject        = "{{ $labels.instance }}"
       summary        = "{{ $labels.instance }} is using {{ humanize $values.A.Value }}% of its memory."
       threshold      = 90
       title          = "Node memory high"
@@ -226,6 +246,7 @@ locals {
       operator       = "gt"
       pending_period = "10m"
       severity       = "warning"
+      subject        = "{{ $labels.device }} on {{ $labels.instance }}"
       summary        = "{{ $labels.device }} on {{ $labels.instance }} has {{ humanize $values.A.Value }} receive/transmit errors per second."
       threshold      = 1
       title          = "Node network errors"
@@ -236,6 +257,7 @@ locals {
       operator       = "gt"
       pending_period = "2m"
       severity       = "critical"
+      subject        = "{{ $labels.node }}"
       summary        = "Node {{ $labels.node }} has not been Ready for 2 minutes."
       threshold      = 0
       title          = "Node not ready"
@@ -246,6 +268,7 @@ locals {
       operator       = "gt"
       pending_period = "5m"
       severity       = "warning"
+      subject        = "{{ $labels.node }} ({{ $labels.condition }})"
       summary        = "Node {{ $labels.node }} reports {{ $labels.condition }}. The kubelet may start evicting pods."
       threshold      = 0
       title          = "Node under resource pressure"
@@ -256,9 +279,58 @@ locals {
       operator       = "lt"
       pending_period = "10m"
       severity       = "warning"
+      subject        = "{{ $labels.job }}"
       summary        = "Prometheus can't scrape {{ $labels.job }} at {{ $labels.instance }}. Alerts that depend on it go quiet."
       threshold      = 1
       title          = "Metrics target down"
+    }
+
+    # ── Synthetics (blackbox exporter probes) ─────────────────────────────
+    # These need blackbox exporter probes, such as modules/stack's
+    # blackbox_exporter.targets. With no probes they have no data and stay quiet.
+    synthetic_check_failing = {
+      expr           = "min by (target, instance) (probe_success)"
+      group          = "synthetics"
+      operator       = "lt"
+      pending_period = "2m"
+      severity       = "critical"
+      subject        = "{{ $labels.target }}"
+      summary        = "{{ $labels.target }} ({{ $labels.instance }}) has failed its synthetic check for 2 minutes."
+      threshold      = 1
+      title          = "Synthetic check failing"
+    }
+    synthetic_check_slow = {
+      expr           = "max by (target, instance) (probe_duration_seconds)"
+      group          = "synthetics"
+      operator       = "gt"
+      pending_period = "10m"
+      severity       = "warning"
+      subject        = "{{ $labels.target }}"
+      summary        = "{{ $labels.target }} ({{ $labels.instance }}) is taking {{ humanize $values.A.Value }}s to answer its synthetic check."
+      threshold      = 5
+      title          = "Synthetic check slow"
+    }
+    tls_certificate_expiring_critical = {
+      expr           = "min by (target, instance) ((probe_ssl_earliest_cert_expiry - time()) / 86400)"
+      group          = "synthetics"
+      operator       = "lt"
+      pending_period = "1h"
+      severity       = "critical"
+      subject        = "{{ $labels.target }}"
+      summary        = "The TLS certificate for {{ $labels.target }} ({{ $labels.instance }}) expires in {{ humanize $values.A.Value }} days."
+      threshold      = 3
+      title          = "TLS certificate about to expire"
+    }
+    tls_certificate_expiring_warning = {
+      expr           = "min by (target, instance) ((probe_ssl_earliest_cert_expiry - time()) / 86400)"
+      group          = "synthetics"
+      operator       = "lt"
+      pending_period = "1h"
+      severity       = "warning"
+      subject        = "{{ $labels.target }}"
+      summary        = "The TLS certificate for {{ $labels.target }} ({{ $labels.instance }}) expires in {{ humanize $values.A.Value }} days. Check that renewal is working."
+      threshold      = 14
+      title          = "TLS certificate expiring soon"
     }
 
     # ── Control plane (self-managed clusters only) ────────────────────────
@@ -269,6 +341,7 @@ locals {
       pending_period = "10m"
       requires       = "apiserver"
       severity       = "critical"
+      subject        = "API server"
       summary        = "{{ humanize $values.A.Value }}% of API server requests are failing with 5xx."
       threshold      = 5
       title          = "API server error rate high"
@@ -280,6 +353,7 @@ locals {
       pending_period = "1m"
       requires       = "etcd"
       severity       = "critical"
+      subject        = "{{ $labels.instance }}"
       summary        = "etcd member {{ $labels.instance }} has no leader and can't serve requests."
       threshold      = 1
       title          = "etcd member has no leader"
