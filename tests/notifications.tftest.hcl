@@ -246,3 +246,21 @@ run "slack_icon_url_wins" {
     error_message = "A channel's own icon_url should win over the shared one."
   }
 }
+
+run "webex_bot_gets_the_title_and_summaries" {
+  command = plan
+
+  module {
+    source = "./modules/notifications"
+  }
+
+  variables {
+    contact_point_name = "kubernetes-homelab"
+    webex              = { room_id = "room-1", token = "t" }
+  }
+
+  assert {
+    condition     = strcontains(nonsensitive(one(grafana_contact_point.this.webex).message), "tmpl.Inline") && strcontains(nonsensitive(one(grafana_contact_point.this.webex).message), ".Annotations.summary")
+    error_message = "The Webex bot should get the title template and one line per alert, like the webhook mode."
+  }
+}
