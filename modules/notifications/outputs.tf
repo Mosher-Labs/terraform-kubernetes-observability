@@ -12,3 +12,8 @@ output "enabled_channels" {
     local.webex_enabled ? "webex" : "",
   ])
 }
+
+output "contact_point_title" {
+  description = "The title template the contact point uses."
+  value       = var.title_template
+}

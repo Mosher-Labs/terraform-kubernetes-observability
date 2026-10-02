@@ -18,7 +18,7 @@ resource "grafana_contact_point" "this" {
     content {
       addresses    = var.email.addresses
       single_email = var.email.single_email
-      subject      = var.email.subject
+      subject      = coalesce(var.email.subject, var.title_template)
       message      = var.email.message
     }
   }
@@ -31,7 +31,7 @@ resource "grafana_contact_point" "this" {
       recipient       = var.slack.recipient
       username        = var.slack.username
       mention_channel = var.slack.mention_channel
-      title           = var.slack.title
+      title           = coalesce(var.slack.title, var.title_template)
       text            = var.slack.text
     }
   }
@@ -40,7 +40,7 @@ resource "grafana_contact_point" "this" {
     for_each = local.teams_enabled ? [1] : []
     content {
       url           = var.teams.url
-      title         = var.teams.title
+      title         = coalesce(var.teams.title, var.title_template)
       section_title = var.teams.section_title
       message       = var.teams.message
     }

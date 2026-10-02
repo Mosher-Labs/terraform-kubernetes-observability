@@ -36,3 +36,16 @@ run "alerts_only" {
     error_message = "Turning notifications off should still create the alerts."
   }
 }
+
+run "null_title_template_falls_back_to_default" {
+  command = plan
+
+  variables {
+    slack = { url = "https://hooks.slack.com/services/T000/B000/XXXX" }
+  }
+
+  assert {
+    condition     = nonsensitive(strcontains(module.notifications[0].contact_point_title, "FIRING"))
+    error_message = "Leaving notifications.title_template unset should use the module default."
+  }
+}

@@ -35,9 +35,10 @@ variable "policy" {
 variable "slack" {
   description = "Slack channel. Set `url` to an incoming webhook URL, or `token` and `recipient` for a bot token and channel. Null disables it."
   type = object({
-    url             = optional(string)
-    token           = optional(string)
-    recipient       = optional(string)
+    url       = optional(string)
+    token     = optional(string)
+    recipient = optional(string)
+    # Unset posts under the bot's or webhook's own name.
     username        = optional(string)
     mention_channel = optional(string)
     title           = optional(string)
@@ -50,6 +51,13 @@ variable "slack" {
     condition     = var.slack == null ? true : (try(var.slack.url, null) != null || (try(var.slack.token, null) != null && try(var.slack.recipient, null) != null))
     error_message = "slack needs either url, or both token and recipient."
   }
+}
+
+variable "title_template" {
+  description = "Grafana notification template for the Slack and Teams title and the email subject, unless a channel sets its own. The default starts with 🔴 FIRING or ✅ RESOLVED, then the alert name, so a resolve is easy to match to its alert: Grafana posts it as a new message, not a thread reply."
+  type        = string
+  nullable    = false
+  default     = "{{ if eq .Status \"firing\" }}🔴 FIRING{{ if gt (len .Alerts.Firing) 1 }} ({{ len .Alerts.Firing }}){{ end }}{{ else }}✅ RESOLVED{{ if gt (len .Alerts.Resolved) 1 }} ({{ len .Alerts.Resolved }}){{ end }}{{ end }}: {{ .CommonLabels.alertname }}"
 }
 
 variable "teams" {

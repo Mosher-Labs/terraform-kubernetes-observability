@@ -21,6 +21,7 @@ module "notifications" {
   contact_point_name         = coalesce(var.notifications.contact_point_name, "kubernetes-${var.cluster_name}")
   manage_notification_policy = var.notifications.manage_notification_policy
   policy                     = var.notifications.policy
+  title_template             = var.notifications.title_template
   email                      = var.notifications.email
   slack                      = var.slack
   teams                      = var.teams

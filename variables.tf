@@ -35,6 +35,7 @@ variable "notifications" {
     enabled                    = optional(bool, true)
     contact_point_name         = optional(string)
     manage_notification_policy = optional(bool, true)
+    title_template             = optional(string)
     email = optional(object({
       addresses    = list(string)
       single_email = optional(bool, true)

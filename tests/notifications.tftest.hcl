@@ -97,3 +97,50 @@ run "policy_can_be_left_alone" {
     error_message = "manage_notification_policy = false should leave the policy tree alone."
   }
 }
+
+run "default_title_marks_firing_and_resolved" {
+  command = plan
+
+  module {
+    source = "./modules/notifications"
+  }
+
+  variables {
+    contact_point_name = "kubernetes-homelab"
+    slack              = { url = "https://hooks.slack.com/services/T000/B000/XXXX" }
+    email              = { addresses = ["oncall@example.com"] }
+  }
+
+  assert {
+    condition     = nonsensitive(strcontains(one(grafana_contact_point.this.slack).title, "🔴 FIRING") && strcontains(one(grafana_contact_point.this.slack).title, "✅ RESOLVED"))
+    error_message = "Slack should get the default title template."
+  }
+
+  assert {
+    condition     = strcontains(one(grafana_contact_point.this.email).subject, "✅ RESOLVED")
+    error_message = "The email subject should default to the title template."
+  }
+
+  assert {
+    condition     = nonsensitive(one(grafana_contact_point.this.slack).username == null)
+    error_message = "With no username set, Slack should post under the bot's own name."
+  }
+}
+
+run "channel_title_overrides_template" {
+  command = plan
+
+  module {
+    source = "./modules/notifications"
+  }
+
+  variables {
+    contact_point_name = "kubernetes-homelab"
+    slack              = { url = "https://hooks.slack.com/services/T000/B000/XXXX", title = "custom" }
+  }
+
+  assert {
+    condition     = nonsensitive(one(grafana_contact_point.this.slack).title == "custom")
+    error_message = "A channel's own title should win over the template."
+  }
+}

@@ -73,6 +73,16 @@ critical alerts repeat more often than warnings. If something else already
 manages your policies, set `notifications.manage_notification_policy = false`
 and route on the `cluster` and `severity` labels yourself.
 
+### Message titles
+
+Slack and Teams titles and email subjects start with 🔴 FIRING or ✅ RESOLVED,
+then the alert name, for example `🔴 FIRING (2): [homelab] Pod crash looping`.
+Grafana posts a resolve as a new message, not as a reply to the original, so
+the title is what pairs them up. Change it with `notifications.title_template`,
+or set a channel's own `title` or `subject`.
+
+Leave `slack.username` unset to post under the Slack app's own name.
+
 ## Cluster types
 
 | `cluster_type` | API server rules | etcd rules |
@@ -158,7 +168,7 @@ credentials. See [CONTRIBUTING.md](CONTRIBUTING.md).
 | prometheus\_datasource\_uid | UID of the Prometheus-compatible Grafana datasource the alert rules query. | `string` | n/a | yes |
 | alerts | Alert catalog settings. See modules/alerts for each field. | ```object({ enabled = optional(bool, true) control_plane = optional(object({ apiserver = optional(bool), etcd = optional(bool) }), {}) disabled_rules = optional(set(string), []) evaluation_interval_seconds = optional(number, 60) folder_title = optional(string) labels = optional(map(string), {}) overrides = optional(map(object({ threshold = optional(number) for = optional(string) severity = optional(string) paused = optional(bool) })), {}) workload_selector = optional(string, "") })``` | `{}` | no |
 | cluster\_type | Kind of cluster: eks, aks, gke, openshift, k3s or generic. Decides which control-plane rules apply. | `string` | `"generic"` | no |
-| notifications | Where alerts go. Turn on any combination of channels by setting them; see modules/notifications. Set `enabled = false` to manage contact points yourself. | ```object({ enabled = optional(bool, true) contact_point_name = optional(string) manage_notification_policy = optional(bool, true) email = optional(object({ addresses = list(string) single_email = optional(bool, true) subject = optional(string) message = optional(string) })) policy = optional(object({ group_by = optional(list(string), ["grafana_folder", "alertname", "cluster"]) group_wait = optional(string, "30s") group_interval = optional(string, "5m") critical_repeat_interval = optional(string, "1h") warning_repeat_interval = optional(string, "4h") }), {}) })``` | `{}` | no |
+| notifications | Where alerts go. Turn on any combination of channels by setting them; see modules/notifications. Set `enabled = false` to manage contact points yourself. | ```object({ enabled = optional(bool, true) contact_point_name = optional(string) manage_notification_policy = optional(bool, true) title_template = optional(string) email = optional(object({ addresses = list(string) single_email = optional(bool, true) subject = optional(string) message = optional(string) })) policy = optional(object({ group_by = optional(list(string), ["grafana_folder", "alertname", "cluster"]) group_wait = optional(string, "30s") group_interval = optional(string, "5m") critical_repeat_interval = optional(string, "1h") warning_repeat_interval = optional(string, "4h") }), {}) })``` | `{}` | no |
 | slack | Slack channel: an incoming webhook `url`, or a bot `token` and `recipient`. Null disables it. | ```object({ url = optional(string) token = optional(string) recipient = optional(string) username = optional(string) mention_channel = optional(string) title = optional(string) text = optional(string) })``` | `null` | no |
 | teams | Microsoft Teams channel: a Teams Workflows webhook `url`. Null disables it. | ```object({ url = string title = optional(string) section_title = optional(string) message = optional(string) })``` | `null` | no |
 | webex | Webex channel: a bot `token` and `room_id`. Null disables it. | ```object({ token = string room_id = string api_url = optional(string) message = optional(string) })``` | `null` | no |
