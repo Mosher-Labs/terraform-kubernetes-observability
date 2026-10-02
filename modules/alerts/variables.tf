@@ -17,6 +17,38 @@ variable "apm" {
   })
 }
 
+variable "backing_services" {
+  default     = {}
+  description = "Alerts for databases, caches and queues, one opt-in section per technology: postgres, mysql, redis, rabbitmq and mongodb. Each reads its standard Prometheus exporter's metrics. `selector` scopes every rule, for example to one namespace."
+  type = object({
+    mongodb = optional(object({
+      connections_percent     = optional(number, 80)
+      enabled                 = optional(bool, false)
+      replication_lag_seconds = optional(number, 30)
+    }), {})
+    mysql = optional(object({
+      connections_percent     = optional(number, 80)
+      enabled                 = optional(bool, false)
+      replication_lag_seconds = optional(number, 30)
+    }), {})
+    postgres = optional(object({
+      connections_percent     = optional(number, 80)
+      enabled                 = optional(bool, false)
+      replication_lag_seconds = optional(number, 30)
+    }), {})
+    rabbitmq = optional(object({
+      enabled          = optional(bool, false)
+      queue_depth      = optional(number, 1000)
+      unacked_messages = optional(number, 1000)
+    }), {})
+    redis = optional(object({
+      enabled        = optional(bool, false)
+      memory_percent = optional(number, 90)
+    }), {})
+    selector = optional(string, "")
+  })
+}
+
 variable "cluster_name" {
   description = "Name of the cluster. Added to every alert as the `cluster` label and to each rule title, so alerts from several clusters stay distinguishable in one Grafana."
   type        = string

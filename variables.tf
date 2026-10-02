@@ -16,6 +16,33 @@ variable "alerts" {
       status_label              = optional(string, "http_response_status_code")
       traffic_drop_percent      = optional(number, 75)
     }), {})
+    backing_services = optional(object({
+      mongodb = optional(object({
+        connections_percent     = optional(number, 80)
+        enabled                 = optional(bool, false)
+        replication_lag_seconds = optional(number, 30)
+      }), {})
+      mysql = optional(object({
+        connections_percent     = optional(number, 80)
+        enabled                 = optional(bool, false)
+        replication_lag_seconds = optional(number, 30)
+      }), {})
+      postgres = optional(object({
+        connections_percent     = optional(number, 80)
+        enabled                 = optional(bool, false)
+        replication_lag_seconds = optional(number, 30)
+      }), {})
+      rabbitmq = optional(object({
+        enabled          = optional(bool, false)
+        queue_depth      = optional(number, 1000)
+        unacked_messages = optional(number, 1000)
+      }), {})
+      redis = optional(object({
+        enabled        = optional(bool, false)
+        memory_percent = optional(number, 90)
+      }), {})
+      selector = optional(string, "")
+    }), {})
     control_plane               = optional(object({ apiserver = optional(bool), etcd = optional(bool) }), {})
     disabled_rules              = optional(set(string), [])
     enabled                     = optional(bool, true)
