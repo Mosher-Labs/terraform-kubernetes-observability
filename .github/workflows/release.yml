@@ -1,0 +1,24 @@
+---
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions: read-all
+
+jobs:
+  # Cuts a semver release from the conventional commit history on main.
+  release:
+    # Fork PRs get a read-only token, so the release job's PR comment would fail.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    uses: "Mosher-Labs/.github/.github/workflows/release.yml@e101c2025370aa3e6a223fade898845db2c75171"  # v0.10.38
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    secrets: inherit
