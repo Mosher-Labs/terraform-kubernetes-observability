@@ -57,7 +57,7 @@ resource "grafana_rule_group" "this" {
       condition = "B"
       is_paused = rule.value.paused
 
-      # The queries already filter to bad series, so no data means healthy.
+      # A series that disappears (a deleted pod, say) is not a problem.
       no_data_state  = "OK"
       exec_err_state = "Error"
 

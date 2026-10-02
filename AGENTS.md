@@ -24,7 +24,7 @@ mocked Grafana provider.
 
 - **Test every behavior change** in `tests/`. Never point tests at a real
   Grafana.
-- **Catalog changes:** keep queries filtered to unhealthy series (no data means
+- **Catalog changes:** keep the threshold out of the PromQL (no data counts as
   healthy), use `__SEL__` for the workload selector on workload rules only, and
   update the catalog table in README.md and the rule counts in the tests.
   Changing a rule ID is a breaking change, because callers reference IDs in

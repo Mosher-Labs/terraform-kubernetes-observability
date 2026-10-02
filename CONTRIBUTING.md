@@ -25,8 +25,10 @@ the Grafana provider, so they run without Grafana or credentials.
 
 ## Adding or changing an alert
 
-1. Edit `modules/alerts/catalog.tf`. Write the query so it returns only
-   unhealthy series, and put the threshold in `threshold`, not in the PromQL.
+1. Edit `modules/alerts/catalog.tf`. Write the query to return the value to
+   compare, one series per thing being alerted on, and put the threshold in
+   `threshold`, not in the PromQL. A query that returns nothing counts as
+   healthy.
 2. Workload rules take the namespace selector through the `__SEL__`
    placeholder. Node and control-plane rules don't.
 3. Prefer `increase()` or `rate()` over a window to raw counters, so the alert

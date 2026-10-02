@@ -120,8 +120,9 @@ traffic. Override any rule by ID with `alerts.overrides`, or remove it with
 | `etcd_no_leader` | control-plane | etcd member has no leader | < 1 for 1m | critical | Needs `etcd` metrics |
 
 Every alert carries the labels `cluster`, `severity` and `rule_id`, plus
-any in `alerts.labels`. Rules only fire for series that match the condition,
-so a query that returns nothing counts as healthy.
+any in `alerts.labels`. Each rule compares its query's value per series with
+the threshold. A query that returns nothing, such as for a pod that no longer
+exists, counts as healthy.
 
 ## Development
 
