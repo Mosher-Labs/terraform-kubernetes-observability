@@ -71,16 +71,27 @@ variable "title_template" {
   description = "Grafana notification template for the Slack and Teams title and the email subject, unless a channel sets its own. The default starts with 🔴 FIRING or ✅ RESOLVED, then the alert name and what it is about (the `subject` annotation, such as \"dex-server in argocd\"), listing up to three. Grafana posts a resolve as a new message, not a thread reply, so the title is what pairs them up."
   nullable    = false
   type        = string
+
+  validation {
+    condition     = !strcontains(var.title_template, "`")
+    error_message = "title_template can't contain backticks: the Webex webhook payload embeds it in a Go raw string."
+  }
 }
 
 variable "webex" {
   default     = null
-  description = "Webex channel: a bot token and the room ID to post to. Null disables it."
+  description = "Webex channel. Set `webhook_url` to a Webex incoming webhook URL (no bot needed, so it works where bot creation is blocked), or `token` and `room_id` for a bot. Null disables it."
   sensitive   = true
   type = object({
-    api_url = optional(string)
-    message = optional(string)
-    room_id = string
-    token   = string
+    api_url     = optional(string)
+    message     = optional(string)
+    room_id     = optional(string)
+    token       = optional(string)
+    webhook_url = optional(string)
   })
+
+  validation {
+    condition     = var.webex == null ? true : (try(var.webex.webhook_url, null) != null) != (try(var.webex.token, null) != null && try(var.webex.room_id, null) != null)
+    error_message = "webex needs either webhook_url, or both token and room_id, but not both."
+  }
 }

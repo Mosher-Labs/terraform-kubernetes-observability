@@ -86,6 +86,12 @@ critical alerts repeat more often than warnings. If something else already
 manages your policies, set `notifications.manage_notification_policy = false`
 and route on the `cluster` and `severity` labels yourself.
 
+### Channels
+
+[docs/notifications.md](docs/notifications.md) walks through setting up each
+channel: Slack (webhook or bot), Microsoft Teams (Workflows), Webex (incoming
+webhook or bot) and email.
+
 ### Message titles
 
 Slack and Teams titles and email subjects start with 🔴 FIRING or ✅ RESOLVED,
@@ -305,7 +311,7 @@ credentials. See [CONTRIBUTING.md](CONTRIBUTING.md).
 | notifications | Where alerts go. Turn on any combination of channels by setting them; see modules/notifications. Set `enabled = false` to manage contact points yourself. | ```object({ contact_point_name = optional(string) email = optional(object({ addresses = list(string) message = optional(string) single_email = optional(bool, true) subject = optional(string) })) enabled = optional(bool, true) manage_notification_policy = optional(bool, true) policy = optional(object({ critical_repeat_interval = optional(string, "1h") group_by = optional(list(string), ["grafana_folder", "alertname", "cluster"]) group_interval = optional(string, "5m") group_wait = optional(string, "30s") warning_repeat_interval = optional(string, "4h") }), {}) title_template = optional(string) })``` | `{}` | no |
 | slack | Slack channel: an incoming webhook `url`, or a bot `token` and `recipient`. Null disables it. | ```object({ mention_channel = optional(string) recipient = optional(string) text = optional(string) title = optional(string) token = optional(string) url = optional(string) username = optional(string) })``` | `null` | no |
 | teams | Microsoft Teams channel: a Teams Workflows webhook `url`. Null disables it. | ```object({ message = optional(string) section_title = optional(string) title = optional(string) url = string })``` | `null` | no |
-| webex | Webex channel: a bot `token` and `room_id`. Null disables it. | ```object({ api_url = optional(string) message = optional(string) room_id = string token = string })``` | `null` | no |
+| webex | Webex channel: an incoming `webhook_url`, or a bot `token` and `room_id`. Null disables it. | ```object({ api_url = optional(string) message = optional(string) room_id = optional(string) token = optional(string) webhook_url = optional(string) })``` | `null` | no |
 
 ## Outputs
 

@@ -35,12 +35,26 @@ resource "grafana_contact_point" "this" {
   }
 
   dynamic "webex" {
-    for_each = local.webex_enabled ? [1] : []
+    for_each = local.webex_bot_enabled ? [1] : []
     content {
       api_url = var.webex.api_url
       message = var.webex.message
       room_id = var.webex.room_id
       token   = var.webex.token
+    }
+  }
+
+  # Webex incoming webhooks go through Grafana's generic webhook integration
+  # with a Webex-shaped payload.
+  dynamic "webhook" {
+    for_each = local.webex_webhook_enabled ? [1] : []
+    content {
+      http_method = "POST"
+      url         = var.webex.webhook_url
+
+      payload {
+        template = local.webex_webhook_payload
+      }
     }
   }
 
