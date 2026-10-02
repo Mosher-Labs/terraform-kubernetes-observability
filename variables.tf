@@ -139,12 +139,13 @@ variable "teams" {
 
 variable "webex" {
   default     = null
-  description = "Webex channel: a bot `token` and `room_id`. Null disables it."
+  description = "Webex channel: an incoming `webhook_url`, or a bot `token` and `room_id`. Null disables it."
   sensitive   = true
   type = object({
-    api_url = optional(string)
-    message = optional(string)
-    room_id = string
-    token   = string
+    api_url     = optional(string)
+    message     = optional(string)
+    room_id     = optional(string)
+    token       = optional(string)
+    webhook_url = optional(string)
   })
 }

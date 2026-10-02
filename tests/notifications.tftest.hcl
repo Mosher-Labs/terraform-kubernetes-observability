@@ -55,7 +55,7 @@ run "all_four_channels" {
     slack              = { token = "xoxb-test", recipient = "#alerts" }
     email              = { addresses = ["oncall@example.com"] }
     teams              = { url = "https://example.webhook.office.com/workflows/test" }
-    webex              = { token = "webex-test", room_id = "room-1" }
+    webex              = { room_id = "room-1", token = "webex-test" }
   }
 
   assert {
@@ -148,4 +148,63 @@ run "channel_title_overrides_template" {
     condition     = nonsensitive(one(grafana_contact_point.this.slack).title == "custom")
     error_message = "A channel's own title should win over the template."
   }
+}
+
+run "webex_incoming_webhook_needs_no_bot" {
+  command = plan
+
+  module {
+    source = "./modules/notifications"
+  }
+
+  variables {
+    contact_point_name = "kubernetes-homelab"
+    webex              = { webhook_url = "https://webexapis.com/v1/webhooks/incoming/test" }
+  }
+
+  assert {
+    condition     = length(grafana_contact_point.this.webex) == 0 && length(grafana_contact_point.this.webhook) == 1
+    error_message = "A Webex webhook URL should use Grafana's webhook integration, not the bot integration."
+  }
+
+  assert {
+    condition     = strcontains(nonsensitive(one(one(grafana_contact_point.this.webhook).payload).template), "coll.Dict \"markdown\"")
+    error_message = "The payload should be Webex's {\"markdown\": ...} shape."
+  }
+
+  assert {
+    condition     = output.enabled_channels == tolist(["webex"])
+    error_message = "Webex should count as an enabled channel."
+  }
+}
+
+run "webex_needs_exactly_one_mode" {
+  command = plan
+
+  module {
+    source = "./modules/notifications"
+  }
+
+  variables {
+    contact_point_name = "kubernetes-homelab"
+    webex              = { room_id = "room-1", token = "t", webhook_url = "https://webexapis.com/v1/webhooks/incoming/test" }
+  }
+
+  expect_failures = [var.webex]
+}
+
+run "title_template_rejects_backticks" {
+  command = plan
+
+  module {
+    source = "./modules/notifications"
+  }
+
+  variables {
+    contact_point_name = "kubernetes-homelab"
+    email              = { addresses = ["oncall@example.com"] }
+    title_template     = "`raw`"
+  }
+
+  expect_failures = [var.title_template]
 }
