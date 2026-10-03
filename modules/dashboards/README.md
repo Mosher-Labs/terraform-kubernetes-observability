@@ -11,6 +11,7 @@ top scopes the workload panels.
 | Workloads | Restarts per pod, deployments missing replicas |
 | Synthetic checks | Status per target, response time, TLS certificate days left |
 | Logs | Error-looking log lines, when `loki_datasource_uid` is set |
+| Services | Requests per second, 5xx error rate and p90 latency per service, and the slowest routes, when `apm.enabled` is set (the root module passes `alerts.apm`) |
 
 ## Usage
 
@@ -56,6 +57,7 @@ are overwritten. Save a copy under another name to customize it.
 | ---- | ----------- | ---- | ------- | :------: |
 | cluster\_name | Name of the cluster. Used in the dashboard title, its UID, and the alert list filter on the `cluster` label. | `string` | n/a | yes |
 | prometheus\_datasource\_uid | UID of the Prometheus-compatible Grafana datasource the panels query. | `string` | n/a | yes |
+| apm | Service-level metrics for the Services row: the same settings as modules/alerts' apm. The row appears when `enabled` is true. | ```object({ enabled = optional(bool, false) metric = optional(string, "http_server_request_duration_seconds") route_label = optional(string, "http_route") selector = optional(string, "") service_label = optional(string, "job") status_label = optional(string, "http_response_status_code") })``` | `{}` | no |
 | folder\_title | Title of the Grafana folder for the dashboard. Defaults to "Kubernetes dashboards (<cluster\_name>)". | `string` | `null` | no |
 | loki\_datasource\_uid | UID of a Loki datasource with the cluster's logs, labeled with `cluster` and `namespace` (as modules/stack's Alloy does). Null leaves out the logs row. | `string` | `null` | no |
 | refresh | How often the dashboard refreshes. | `string` | `"1m"` | no |
