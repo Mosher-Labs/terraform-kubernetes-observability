@@ -21,6 +21,15 @@ module "dashboards" {
   count  = var.dashboards.enabled ? 1 : 0
   source = "./modules/dashboards"
 
+  # The Services row reads the same metrics as the APM alerts.
+  apm = {
+    enabled       = var.alerts.apm.enabled
+    metric        = var.alerts.apm.metric
+    route_label   = var.alerts.apm.route_label
+    selector      = var.alerts.apm.selector
+    service_label = var.alerts.apm.service_label
+    status_label  = var.alerts.apm.status_label
+  }
   cluster_name              = var.cluster_name
   folder_title              = var.dashboards.folder_title
   loki_datasource_uid       = var.dashboards.loki_datasource_uid

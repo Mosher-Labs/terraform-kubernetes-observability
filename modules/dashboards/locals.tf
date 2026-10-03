@@ -1,4 +1,10 @@
 locals {
+  # APM settings rendered into PromQL: the service label, and the matcher
+  # lists for all requests and for 5xx responses.
+  apm_s       = var.apm.service_label
+  apm_sel     = var.apm.selector == "" ? "" : "{${var.apm.selector}}"
+  apm_sel_5xx = "{${var.apm.status_label}=~\"5..\"${var.apm.selector == "" ? "" : ",${var.apm.selector}"}}"
+
   dashboard = {
     panels        = [for i, p in local.panel_specs : merge(local.panel_defaults[p.kind], p.panel, { id = i + 1 })]
     refresh       = var.refresh
@@ -262,6 +268,48 @@ locals {
         }
       },
     ],
+    # The Services row, only with APM metrics. Grafana closes up the gap when
+    # there's no logs row above it.
+    slice([
+      { kind = "row", panel = { gridPos = { h = 1, w = 24, x = 0, y = 65 }, title = "Services" } },
+      {
+        kind = "timeseries"
+        panel = {
+          fieldConfig = { defaults = { unit = "reqps" }, overrides = [] }
+          gridPos     = { h = 8, w = 8, x = 0, y = 66 }
+          targets     = [{ datasource = local.prometheus, expr = "sum by (${local.apm_s}) (rate(${var.apm.metric}_count${local.apm_sel}[5m]))", legendFormat = "{{${local.apm_s}}}", range = true, refId = "A" }]
+          title       = "Requests per second"
+        }
+      },
+      {
+        kind = "timeseries"
+        panel = {
+          fieldConfig = { defaults = { min = 0, unit = "percent" }, overrides = [] }
+          gridPos     = { h = 8, w = 8, x = 8, y = 66 }
+          targets     = [{ datasource = local.prometheus, expr = "100 * sum by (${local.apm_s}) (rate(${var.apm.metric}_count${local.apm_sel_5xx}[5m])) / sum by (${local.apm_s}) (rate(${var.apm.metric}_count${local.apm_sel}[5m]))", legendFormat = "{{${local.apm_s}}}", range = true, refId = "A" }]
+          title       = "5xx error rate"
+        }
+      },
+      {
+        kind = "timeseries"
+        panel = {
+          fieldConfig = { defaults = { unit = "s" }, overrides = [] }
+          gridPos     = { h = 8, w = 8, x = 16, y = 66 }
+          targets     = [{ datasource = local.prometheus, expr = "histogram_quantile(0.9, sum by (${local.apm_s}, le) (rate(${var.apm.metric}_bucket${local.apm_sel}[5m])))", legendFormat = "{{${local.apm_s}}}", range = true, refId = "A" }]
+          title       = "p90 latency"
+        }
+      },
+      {
+        kind = "table"
+        panel = {
+          fieldConfig     = { defaults = { decimals = 3, unit = "s" }, overrides = [] }
+          gridPos         = { h = 8, w = 24, x = 0, y = 74 }
+          targets         = [{ datasource = local.prometheus, expr = "topk(10, histogram_quantile(0.9, sum by (${local.apm_s}, ${var.apm.route_label}, le) (rate(${var.apm.metric}_bucket${local.apm_sel}[5m]))))", format = "table", instant = true, refId = "A" }]
+          title           = "Slowest routes, p90"
+          transformations = local.table_transformations
+        }
+      },
+    ], 0, var.apm.enabled ? 5 : 0),
     # The logs row, only with a Loki datasource.
     slice([
       { kind = "row", panel = { gridPos = { h = 1, w = 24, x = 0, y = 52 }, title = "Logs" } },

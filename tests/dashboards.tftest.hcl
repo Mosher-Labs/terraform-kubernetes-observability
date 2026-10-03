@@ -67,3 +67,50 @@ run "alert_list_filters_on_cluster" {
     error_message = "The alert list should show only this cluster's alerts."
   }
 }
+
+run "services_row_only_with_apm" {
+  command = plan
+
+  module {
+    source = "./modules/dashboards"
+  }
+
+  assert {
+    condition     = !contains([for p in jsondecode(grafana_dashboard.overview.config_json).panels : p.title], "Services")
+    error_message = "No Services row unless APM is enabled."
+  }
+}
+
+run "services_row_uses_the_apm_metric" {
+  command = plan
+
+  module {
+    source = "./modules/dashboards"
+  }
+
+  variables {
+    apm = {
+      enabled       = true
+      metric        = "grafana_http_request_duration_seconds"
+      route_label   = "handler"
+      selector      = "namespace=\"monitoring\""
+      service_label = "job"
+      status_label  = "status_code"
+    }
+  }
+
+  assert {
+    condition     = contains([for p in jsondecode(grafana_dashboard.overview.config_json).panels : p.title], "Services")
+    error_message = "APM should add the Services row."
+  }
+
+  assert {
+    condition     = strcontains(one([for p in jsondecode(grafana_dashboard.overview.config_json).panels : p if p.title == "5xx error rate"]).targets[0].expr, "grafana_http_request_duration_seconds_count{status_code=~\"5..\",namespace=\"monitoring\"}")
+    error_message = "The error-rate panel should use the APM metric, status label and selector."
+  }
+
+  assert {
+    condition     = strcontains(one([for p in jsondecode(grafana_dashboard.overview.config_json).panels : p if p.title == "Slowest routes, p90"]).targets[0].expr, "sum by (job, handler, le)")
+    error_message = "The slowest-routes table should group by service and route."
+  }
+}
