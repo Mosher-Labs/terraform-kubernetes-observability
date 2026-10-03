@@ -5,8 +5,11 @@ locals {
     etcd      = coalesce(var.control_plane.etcd, contains(["generic", "openshift"], var.cluster_type))
   }
 
-  # The rules turned on: the core catalog plus the optional groups.
-  enabled_catalog = merge(local.catalog, { for id, r in local.apm_catalog : id => r if var.apm.enabled }, local.backing_catalog)
+  # Custom rule IDs that clash with a rule this module defines.
+  colliding_ids = setintersection(keys(var.custom_rules), concat(keys(local.known_rules), local.backing_rule_ids))
+
+  # The rules turned on: the core catalog, the optional groups, and custom rules.
+  enabled_catalog = merge(local.catalog, { for id, r in local.apm_catalog : id => r if var.apm.enabled }, local.backing_catalog, var.custom_rules)
 
   groups = distinct([for r in values(local.rules) : r.group])
 
@@ -34,5 +37,5 @@ locals {
     if !contains(var.disabled_rules, id) && (try(r.requires, null) == null ? true : local.capabilities[r.requires])
   }
 
-  unknown_ids = setsubtract(setunion(var.disabled_rules, keys(var.overrides)), concat(keys(local.known_rules), local.backing_rule_ids))
+  unknown_ids = setsubtract(setunion(var.disabled_rules, keys(var.overrides)), concat(keys(local.known_rules), local.backing_rule_ids, keys(var.custom_rules)))
 }

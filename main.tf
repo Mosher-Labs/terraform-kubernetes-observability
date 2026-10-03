@@ -7,6 +7,7 @@ module "alerts" {
   cluster_name                = var.cluster_name
   cluster_type                = var.cluster_type
   control_plane               = var.alerts.control_plane
+  custom_rules                = var.alerts.custom_rules
   disabled_rules              = var.alerts.disabled_rules
   evaluation_interval_seconds = var.alerts.evaluation_interval_seconds
   heartbeat_enabled           = nonsensitive(var.heartbeat != null) && var.notifications.enabled

@@ -43,7 +43,18 @@ variable "alerts" {
       }), {})
       selector = optional(string, "")
     }), {})
-    control_plane               = optional(object({ apiserver = optional(bool), etcd = optional(bool) }), {})
+    control_plane = optional(object({ apiserver = optional(bool), etcd = optional(bool) }), {})
+    custom_rules = optional(map(object({
+      expr           = string
+      group          = string
+      operator       = string
+      pending_period = string
+      severity       = string
+      subject        = string
+      summary        = string
+      threshold      = number
+      title          = string
+    })), {})
     disabled_rules              = optional(set(string), [])
     enabled                     = optional(bool, true)
     evaluation_interval_seconds = optional(number, 60)
