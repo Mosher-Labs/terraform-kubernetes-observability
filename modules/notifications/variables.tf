@@ -14,6 +14,16 @@ variable "email" {
   })
 }
 
+variable "heartbeat" {
+  default     = null
+  description = "An outside heartbeat (dead man's switch) URL, such as a healthchecks.io ping URL, and how often to ping it. Needs the alerts module's heartbeat rule and manage_notification_policy. Null turns it off."
+  sensitive   = true
+  type = object({
+    interval = optional(string, "5m")
+    url      = string
+  })
+}
+
 variable "icon_url" {
   default     = null
   description = "URL of an image to show as the sender's avatar, on channels that allow it per message: Slack. Webex and Teams take the avatar from the bot or app that posts; see docs/notifications.md."

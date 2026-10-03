@@ -138,3 +138,25 @@ notifications = {
 After applying, open **Alerting → Contact points** in Grafana, edit the
 contact point, and click **Test** next to the channel. Grafana sends a sample
 alert straight away, without waiting for a rule to fire.
+
+## Heartbeat
+
+Every channel above depends on Grafana and Prometheus working. A heartbeat
+covers the case where they don't: Grafana pings an outside service on a
+schedule, and that service alerts you when the pings stop.
+
+With [healthchecks.io](https://healthchecks.io), free for up to 20 checks:
+
+1. Create a check. Set its **period** to the heartbeat interval (5 minutes by
+   default) and its **grace time** to 5 to 10 minutes.
+2. Under **Integrations**, choose how it alerts you: email by default, or
+   Slack, Teams and others. Use a channel that doesn't depend on your cluster.
+3. Copy the check's ping URL (`https://hc-ping.com/...`).
+
+```hcl
+heartbeat = { url = var.healthchecks_ping_url }
+```
+
+The module also alerts when any channel fails to deliver
+(`notification_delivery_failing`). With two channels configured, each one
+reports the other's failures.

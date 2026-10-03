@@ -333,6 +333,21 @@ locals {
       title          = "TLS certificate expiring soon"
     }
 
+    # ── Alerting (the notification pipeline itself) ───────────────────────
+    # Grafana counts failed deliveries per integration. With more than one
+    # channel, a failure in one is reported through the others.
+    notification_delivery_failing = {
+      expr           = "sum by (integration) (increase(grafana_alerting_notifications_failed_total[15m]))"
+      group          = "alerting"
+      operator       = "gt"
+      pending_period = "0s"
+      severity       = "warning"
+      subject        = "{{ $labels.integration }}"
+      summary        = "Grafana failed to deliver {{ humanize $values.A.Value }} notifications through {{ $labels.integration }} in the last 15 minutes. Check that channel's URL or token."
+      threshold      = 0
+      title          = "Notification delivery failing"
+    }
+
     # ── Control plane (self-managed clusters only) ────────────────────────
     apiserver_errors = {
       expr           = "100 * sum(rate(apiserver_request_total{code=~\"5..\"}[5m])) / sum(rate(apiserver_request_total[5m]))"

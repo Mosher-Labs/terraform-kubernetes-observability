@@ -264,3 +264,49 @@ run "webex_bot_gets_the_title_and_summaries" {
     error_message = "The Webex bot should get the title template and one line per alert, like the webhook mode."
   }
 }
+
+run "heartbeat_has_its_own_contact_point_and_route" {
+  command = plan
+
+  module {
+    source = "./modules/notifications"
+  }
+
+  variables {
+    contact_point_name = "kubernetes-homelab"
+    heartbeat          = { url = "https://hc-ping.com/00000000-0000-0000-0000-000000000000" }
+    slack              = { url = "https://hooks.slack.com/services/T000/B000/XXXX" }
+  }
+
+  assert {
+    condition     = grafana_contact_point.heartbeat[0].name == "kubernetes-homelab-heartbeat"
+    error_message = "The heartbeat should get its own contact point."
+  }
+
+  assert {
+    condition     = grafana_notification_policy.this[0].policy[0].contact_point == "kubernetes-homelab-heartbeat" && grafana_notification_policy.this[0].policy[0].repeat_interval == "5m"
+    error_message = "The first policy should send the heartbeat to its contact point every interval."
+  }
+
+  assert {
+    condition     = one(grafana_notification_policy.this[0].policy[0].matcher).label == "heartbeat"
+    error_message = "The heartbeat route should match the heartbeat label."
+  }
+}
+
+run "heartbeat_needs_the_policy" {
+  command = plan
+
+  module {
+    source = "./modules/notifications"
+  }
+
+  variables {
+    contact_point_name         = "kubernetes-homelab"
+    heartbeat                  = { url = "https://hc-ping.com/00000000-0000-0000-0000-000000000000" }
+    manage_notification_policy = false
+    slack                      = { url = "https://hooks.slack.com/services/T000/B000/XXXX" }
+  }
+
+  expect_failures = [grafana_contact_point.heartbeat]
+}

@@ -14,7 +14,7 @@ run "defaults_create_alerts_and_notifications" {
   }
 
   assert {
-    condition     = length(output.alert_rule_ids) == 29 && output.enabled_channels == tolist(["slack"])
+    condition     = length(output.alert_rule_ids) == 30 && output.enabled_channels == tolist(["slack"])
     error_message = "The root module should create the k3s catalog and a Slack contact point."
   }
 

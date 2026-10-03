@@ -9,6 +9,7 @@ module "alerts" {
   control_plane               = var.alerts.control_plane
   disabled_rules              = var.alerts.disabled_rules
   evaluation_interval_seconds = var.alerts.evaluation_interval_seconds
+  heartbeat_enabled           = nonsensitive(var.heartbeat != null) && var.notifications.enabled
   folder_title                = var.alerts.folder_title
   labels                      = var.alerts.labels
   overrides                   = var.alerts.overrides
@@ -33,6 +34,7 @@ module "notifications" {
 
   contact_point_name         = coalesce(var.notifications.contact_point_name, "kubernetes-${var.cluster_name}")
   email                      = var.notifications.email
+  heartbeat                  = var.heartbeat
   icon_url                   = var.notifications.icon_url
   manage_notification_policy = var.notifications.manage_notification_policy
   policy                     = var.notifications.policy

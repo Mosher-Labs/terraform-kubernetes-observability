@@ -92,6 +92,12 @@ variable "folder_title" {
   type        = string
 }
 
+variable "heartbeat_enabled" {
+  default     = false
+  description = "Whether to create the heartbeat rule: it always fires while Grafana can query Prometheus, labeled heartbeat = \"true\", for modules/notifications to send to an outside heartbeat service."
+  type        = bool
+}
+
 variable "labels" {
   default     = {}
   description = "Extra labels added to every alert, for routing or ownership."

@@ -134,7 +134,7 @@ locals {
         panel = {
           gridPos = { h = 8, w = 12, x = 12, y = 1 }
           options = {
-            alertInstanceLabelFilter = "{cluster=\"${var.cluster_name}\"}"
+            alertInstanceLabelFilter = "{cluster=\"${var.cluster_name}\", heartbeat!=\"true\"}"
             dashboardAlerts          = false
             groupMode                = "default"
             maxItems                 = 20
