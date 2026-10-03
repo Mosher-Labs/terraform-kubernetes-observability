@@ -26,7 +26,7 @@ variable "heartbeat" {
 
 variable "icon_url" {
   default     = null
-  description = "URL of an image to show as the sender's avatar, on channels that allow it per message: Slack. Webex and Teams take the avatar from the bot or app that posts; see docs/notifications.md."
+  description = "URL of an image to show on every alert: Slack's sender avatar, and a logo in Teams' card. Webex takes its avatar from the bot that posts; see docs/notifications.md."
   type        = string
 }
 
@@ -73,9 +73,10 @@ variable "slack" {
 
 variable "teams" {
   default     = null
-  description = "Microsoft Teams channel. `url` is a Teams Workflows (Power Automate) webhook URL. Null disables it."
+  description = "Microsoft Teams channel. `url` is a Teams Workflows webhook URL. With an icon (`icon_url` here, or the shared `icon_url`), Teams gets a custom card showing it, since Workflows posts can't change their avatar. Null disables it."
   sensitive   = true
   type = object({
+    icon_url      = optional(string)
     message       = optional(string)
     section_title = optional(string)
     title         = optional(string)

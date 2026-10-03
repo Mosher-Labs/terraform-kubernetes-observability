@@ -310,3 +310,45 @@ run "heartbeat_needs_the_policy" {
 
   expect_failures = [grafana_contact_point.heartbeat]
 }
+
+run "teams_without_an_icon_uses_the_built_in_card" {
+  command = plan
+
+  module {
+    source = "./modules/notifications"
+  }
+
+  variables {
+    contact_point_name = "kubernetes-homelab"
+    teams              = { url = "https://example.environment.api.powerplatform.com/workflows/test" }
+  }
+
+  assert {
+    condition     = length(grafana_contact_point.this.teams) == 1 && length(grafana_contact_point.this.webhook) == 0
+    error_message = "Without an icon, Teams should use Grafana's built-in Teams integration."
+  }
+}
+
+run "teams_with_an_icon_gets_a_custom_card" {
+  command = plan
+
+  module {
+    source = "./modules/notifications"
+  }
+
+  variables {
+    contact_point_name = "kubernetes-homelab"
+    icon_url           = "https://example.com/logo.png"
+    teams              = { url = "https://example.environment.api.powerplatform.com/workflows/test" }
+  }
+
+  assert {
+    condition     = length(grafana_contact_point.this.teams) == 0 && length(grafana_contact_point.this.webhook) == 1
+    error_message = "With an icon, Teams should use the webhook integration with a custom card."
+  }
+
+  assert {
+    condition     = strcontains(nonsensitive(one(one(grafana_contact_point.this.webhook).payload).template), "application/vnd.microsoft.card.adaptive") && nonsensitive(one(one(grafana_contact_point.this.webhook).payload).vars.icon_url) == "https://example.com/logo.png"
+    error_message = "The card should be an Adaptive Card carrying the icon URL."
+  }
+}

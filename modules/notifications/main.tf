@@ -26,7 +26,7 @@ resource "grafana_contact_point" "this" {
   }
 
   dynamic "teams" {
-    for_each = local.teams_enabled ? [1] : []
+    for_each = local.teams_enabled && !local.teams_card_enabled ? [1] : []
     content {
       message       = var.teams.message
       section_title = var.teams.section_title
@@ -42,6 +42,20 @@ resource "grafana_contact_point" "this" {
       message = coalesce(var.webex.message, local.webex_bot_message)
       room_id = var.webex.room_id
       token   = var.webex.token
+    }
+  }
+
+  # Teams with an icon: a custom card through the webhook integration.
+  dynamic "webhook" {
+    for_each = local.teams_card_enabled ? [1] : []
+    content {
+      http_method = "POST"
+      url         = var.teams.url
+
+      payload {
+        template = local.teams_card_payload
+        vars     = { icon_url = local.teams_icon_url }
+      }
     }
   }
 

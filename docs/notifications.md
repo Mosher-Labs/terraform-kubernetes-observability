@@ -13,15 +13,15 @@ the title is what pairs them up.
 
 ## Sender avatar
 
-Set `notifications.icon_url` to an image URL to use it as the sender's avatar
-wherever the service allows it per message:
+Set `notifications.icon_url` to an image URL to show it on every alert, as far
+as each service allows:
 
 | Channel | Avatar |
 | --- | --- |
-| Slack | `icon_url` applies to every message. With a bot token, the app needs the `chat:write.customize` scope. |
+| Slack | The sender's avatar on every message. With a bot token, the app needs the `chat:write.customize` scope. |
 | Webex, incoming webhook | Fixed by Webex: the webhook's initial. Use a bot for a custom avatar. |
 | Webex, bot | The bot's avatar, set when you create the bot at <https://developer.webex.com/my-apps>. |
-| Teams | The Workflows app's avatar. It can't be changed. |
+| Teams | The sender is always "_creator_ via Workflows", with the name of whoever created the workflow. With `icon_url` set, the module sends a custom card with the icon next to the title instead. |
 | Email | None. |
 
 ```hcl
@@ -70,17 +70,30 @@ the Adaptive Card that Grafana sends.
 2. Choose the template **Send webhook alerts to a channel** (also listed as
    "Post to a channel when a webhook request is received").
 3. Name it, pick the team and channel, and click **Add workflow**.
-4. Copy the URL it shows. It starts with
-   `https://<region>.logic.azure.com/workflows/...` or, in newer tenants,
-   `https://<tenant>.webhook.office.com/...`.
+4. Copy the URL it shows. Newer tenants get
+   `https://<id>.environment.api.powerplatform.com/...`; older ones
+   `https://<region>.logic.azure.com/...` or
+   `https://<tenant>.webhook.office.com/...`. All three work.
 
 ```hcl
 teams = { url = var.teams_workflow_url }
 ```
 
-Messages post as the account that created the workflow, through the Workflows
-app. If that person leaves the organization, the workflow stops: create it with
-a service account where possible.
+Messages post as "_creator_ via Workflows", with the name of whoever created the workflow, the account that created the
+workflow. If that person leaves the organization, the workflow stops: create it
+with a service account where possible.
+
+Without an icon, Teams gets Grafana's built-in card: the title, then each
+alert's labels and annotations. With `icon_url` (or `teams.icon_url`), the
+module sends its own card instead: the icon and the title, red when firing and
+green when resolved, one line per alert, and a **View in Grafana** button that
+opens the alert's rule (or the alert list when a message holds several alerts).
+
+**Trying Teams without a work tenant.** Free personal Teams has no channels or
+Workflows. A Microsoft 365 Business Basic trial (one month free, one licence,
+card required) is enough to test with. Afterwards, cancel it at
+<https://admin.microsoft.com> under **Billing → Your products**: open the
+subscription and turn off recurring billing, then cancel it.
 
 ## Webex
 
