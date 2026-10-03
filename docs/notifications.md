@@ -21,7 +21,7 @@ as each service allows:
 | Slack | The sender's avatar on every message. With a bot token, the app needs the `chat:write.customize` scope. |
 | Webex, incoming webhook | Fixed by Webex: the webhook's initial. Use a bot for a custom avatar. |
 | Webex, bot | The bot's avatar, set when you create the bot at <https://developer.webex.com/my-apps>. |
-| Teams | The sender is always "_creator_ via Workflows", with the name of whoever created the workflow. With `icon_url` set, the module sends a custom card with the icon next to the title instead. |
+| Teams | The sender is always "_creator_ via Workflows", where _creator_ made the workflow. With `icon_url` set, the module's card shows the icon next to the title. |
 | Email | None. |
 
 ```hcl
@@ -79,9 +79,9 @@ the Adaptive Card that Grafana sends.
 teams = { url = var.teams_workflow_url }
 ```
 
-Messages post as "_creator_ via Workflows", with the name of whoever created the workflow, the account that created the
-workflow. If that person leaves the organization, the workflow stops: create it
-with a service account where possible.
+Messages post as "_creator_ via Workflows", where _creator_ is the account that
+created the workflow. If that person leaves the organization, the workflow
+stops: create it with a service account where possible.
 
 Without an icon, Teams gets Grafana's built-in card: the title, then each
 alert's labels and annotations. With `icon_url` (or `teams.icon_url`), the
