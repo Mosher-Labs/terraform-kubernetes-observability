@@ -67,6 +67,27 @@ resource "grafana_contact_point" "this" {
   }
 }
 
+# The heartbeat gets its own contact point, so it never reaches the channels
+# people read.
+resource "grafana_contact_point" "heartbeat" {
+  count = local.heartbeat_enabled ? 1 : 0
+
+  name = "${var.contact_point_name}-heartbeat"
+
+  webhook {
+    disable_resolve_message = true
+    http_method             = "POST"
+    url                     = var.heartbeat.url
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.manage_notification_policy
+      error_message = "heartbeat needs manage_notification_policy, to route the heartbeat rule to its own contact point."
+    }
+  }
+}
+
 resource "grafana_notification_policy" "this" {
   count = var.manage_notification_policy ? 1 : 0
 
@@ -75,6 +96,25 @@ resource "grafana_notification_policy" "this" {
   group_interval  = var.policy.group_interval
   group_wait      = var.policy.group_wait
   repeat_interval = var.policy.warning_repeat_interval
+
+  # First, so the heartbeat stops here and never reaches the other channels.
+  # Re-sent every interval for as long as it fires.
+  dynamic "policy" {
+    for_each = local.heartbeat_enabled ? [1] : []
+    content {
+      contact_point   = grafana_contact_point.heartbeat[0].name
+      group_by        = ["alertname"]
+      group_interval  = "1m"
+      group_wait      = "0s"
+      repeat_interval = nonsensitive(var.heartbeat.interval)
+
+      matcher {
+        label = "heartbeat"
+        match = "="
+        value = "true"
+      }
+    }
+  }
 
   policy {
     contact_point   = grafana_contact_point.this.name

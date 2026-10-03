@@ -81,6 +81,16 @@ variable "dashboards" {
   })
 }
 
+variable "heartbeat" {
+  default     = null
+  description = "Outside heartbeat (dead man's switch): a URL to ping, such as a healthchecks.io ping URL, and how often. It alerts you if the pings stop, which catches Grafana, Prometheus or the whole cluster being down. Null turns it off."
+  sensitive   = true
+  type = object({
+    interval = optional(string, "5m")
+    url      = string
+  })
+}
+
 variable "notifications" {
   default     = {}
   description = "Where alerts go. Turn on any combination of channels by setting them; see modules/notifications. Set `enabled = false` to manage contact points yourself."

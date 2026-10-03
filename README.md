@@ -17,7 +17,10 @@ managed Prometheus, or Grafana Cloud.
   metrics, so those rules are only created for self-managed clusters.
 - **An overview dashboard** with cluster health, resources, workloads,
   synthetic checks, the cluster's firing alerts and, with Loki, error logs.
-- **Notifications** to Slack, email, Webex and Teams. Each channel is optional
+- **Notifications** to Slack, email, Webex and Teams.
+- **Watching the watchers:** an alert when a channel fails to deliver, and an
+  optional heartbeat to an outside service that alerts you if Grafana,
+  Prometheus or the whole cluster goes quiet. Each channel is optional
   and independent.
 - **Service-level (APM) alerts**, opt in: latency, error rate per service and
   per route, traffic drops, and errors right after a deploy, from any
@@ -70,6 +73,23 @@ See [examples/k3s](examples/k3s) for a complete configuration.
   node-exporter, cAdvisor (through the kubelet) and, for control-plane rules,
   the API server and etcd. kube-prometheus-stack provides all of them.
 - Email needs SMTP configured in Grafana.
+
+### Heartbeat
+
+Alerts can't report that the alerting stack itself is down. Set `heartbeat` to
+an outside heartbeat URL, such as a [healthchecks.io](https://healthchecks.io)
+ping URL. The module then adds a rule that fires for as long as Grafana can
+query Prometheus, and pings the URL every `interval` (default 5m) through its
+own contact point, so it never reaches Slack or Webex. If the pings stop, the
+outside service alerts you.
+
+```hcl
+heartbeat = { url = var.healthchecks_ping_url }
+```
+
+Give the check a period of the interval, plus a few minutes of grace. It needs
+`notifications.manage_notification_policy` (the default). The dashboard's
+alert list hides the heartbeat.
 
 ### Dashboard
 
@@ -262,6 +282,7 @@ traffic. Override any rule by ID with `alerts.overrides`, or remove it with
 | `synthetic_check_slow` | synthetics | Synthetic check slow | > 5 for 10m | warning | Needs blackbox probes |
 | `tls_certificate_expiring_critical` | synthetics | TLS certificate about to expire | < 3 for 1h | critical | Needs blackbox probes |
 | `tls_certificate_expiring_warning` | synthetics | TLS certificate expiring soon | < 14 for 1h | warning | Needs blackbox probes |
+| `notification_delivery_failing` | alerting | Notification delivery failing | > 0 for 0s | warning | Grafana's delivery counters, scraped by Prometheus |
 | `apiserver_errors` | control-plane | API server error rate high | > 5 for 10m | critical | Needs `apiserver` metrics |
 | `etcd_no_leader` | control-plane | etcd member has no leader | < 1 for 1m | critical | Needs `etcd` metrics |
 
@@ -308,6 +329,7 @@ credentials. See [CONTRIBUTING.md](CONTRIBUTING.md).
 | alerts | Alert catalog settings. See modules/alerts for each field. | ```object({ apm = optional(object({ deploy_error_rate_percent = optional(number, 1) enabled = optional(bool, false) error_rate_percent = optional(number, 5) latency_avg_seconds = optional(number, 0.5) latency_p90_seconds = optional(number, 1) metric = optional(string, "http_server_request_duration_seconds") min_requests_per_second = optional(number, 0.1) route_label = optional(string, "http_route") selector = optional(string, "") service_label = optional(string, "job") status_label = optional(string, "http_response_status_code") traffic_drop_percent = optional(number, 75) }), {}) backing_services = optional(object({ mongodb = optional(object({ connections_percent = optional(number, 80) enabled = optional(bool, false) replication_lag_seconds = optional(number, 30) }), {}) mysql = optional(object({ connections_percent = optional(number, 80) enabled = optional(bool, false) replication_lag_seconds = optional(number, 30) }), {}) postgres = optional(object({ connections_percent = optional(number, 80) enabled = optional(bool, false) replication_lag_seconds = optional(number, 30) }), {}) rabbitmq = optional(object({ enabled = optional(bool, false) queue_depth = optional(number, 1000) unacked_messages = optional(number, 1000) }), {}) redis = optional(object({ enabled = optional(bool, false) memory_percent = optional(number, 90) }), {}) selector = optional(string, "") }), {}) control_plane = optional(object({ apiserver = optional(bool), etcd = optional(bool) }), {}) disabled_rules = optional(set(string), []) enabled = optional(bool, true) evaluation_interval_seconds = optional(number, 60) folder_title = optional(string) labels = optional(map(string), {}) overrides = optional(map(object({ paused = optional(bool) pending_period = optional(string) severity = optional(string) threshold = optional(number) })), {}) workload_selector = optional(string, "") })``` | `{}` | no |
 | cluster\_type | Kind of cluster: eks, aks, gke, openshift, k3s or generic. Decides which control-plane rules apply. | `string` | `"generic"` | no |
 | dashboards | Overview dashboard settings. Set `loki_datasource_uid` to add a logs row. See modules/dashboards. | ```object({ enabled = optional(bool, true) folder_title = optional(string) loki_datasource_uid = optional(string) refresh = optional(string, "1m") })``` | `{}` | no |
+| heartbeat | Outside heartbeat (dead man's switch): a URL to ping, such as a healthchecks.io ping URL, and how often. It alerts you if the pings stop, which catches Grafana, Prometheus or the whole cluster being down. Null turns it off. | ```object({ interval = optional(string, "5m") url = string })``` | `null` | no |
 | notifications | Where alerts go. Turn on any combination of channels by setting them; see modules/notifications. Set `enabled = false` to manage contact points yourself. | ```object({ contact_point_name = optional(string) email = optional(object({ addresses = list(string) message = optional(string) single_email = optional(bool, true) subject = optional(string) })) enabled = optional(bool, true) icon_url = optional(string) manage_notification_policy = optional(bool, true) policy = optional(object({ critical_repeat_interval = optional(string, "1h") group_by = optional(list(string), ["grafana_folder", "alertname", "cluster"]) group_interval = optional(string, "5m") group_wait = optional(string, "30s") warning_repeat_interval = optional(string, "4h") }), {}) title_template = optional(string) })``` | `{}` | no |
 | slack | Slack channel: an incoming webhook `url`, or a bot `token` and `recipient`. Null disables it. | ```object({ icon_url = optional(string) mention_channel = optional(string) recipient = optional(string) text = optional(string) title = optional(string) token = optional(string) url = optional(string) username = optional(string) })``` | `null` | no |
 | teams | Microsoft Teams channel: a Teams Workflows webhook `url`. Null disables it. | ```object({ message = optional(string) section_title = optional(string) title = optional(string) url = string })``` | `null` | no |

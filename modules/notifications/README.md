@@ -52,6 +52,7 @@ every hour and warnings every 4 hours. Change that with `policy`.
 
 | Name | Type |
 | ---- | ---- |
+| [grafana_contact_point.heartbeat](https://registry.terraform.io/providers/grafana/grafana/latest/docs/resources/contact_point) | resource |
 | [grafana_contact_point.this](https://registry.terraform.io/providers/grafana/grafana/latest/docs/resources/contact_point) | resource |
 | [grafana_notification_policy.this](https://registry.terraform.io/providers/grafana/grafana/latest/docs/resources/notification_policy) | resource |
 
@@ -61,6 +62,7 @@ every hour and warnings every 4 hours. Change that with `policy`.
 | ---- | ----------- | ---- | ------- | :------: |
 | contact\_point\_name | Name of the Grafana contact point that holds every enabled channel. | `string` | n/a | yes |
 | email | Email channel. Null disables it. Grafana must have SMTP configured. | ```object({ addresses = list(string) message = optional(string) single_email = optional(bool, true) subject = optional(string) })``` | `null` | no |
+| heartbeat | An outside heartbeat (dead man's switch) URL, such as a healthchecks.io ping URL, and how often to ping it. Needs the alerts module's heartbeat rule and manage\_notification\_policy. Null turns it off. | ```object({ interval = optional(string, "5m") url = string })``` | `null` | no |
 | icon\_url | URL of an image to show as the sender's avatar, on channels that allow it per message: Slack. Webex and Teams take the avatar from the bot or app that posts; see docs/notifications.md. | `string` | `null` | no |
 | manage\_notification\_policy | Whether to manage the Grafana organization's notification policy tree. Grafana has one tree per organization, so this replaces any policies created elsewhere. Set false to route alerts yourself, using the `cluster` and `severity` labels. | `bool` | `true` | no |
 | policy | Grouping and timing for the notification policy. Critical alerts repeat more often than warnings. | ```object({ critical_repeat_interval = optional(string, "1h") group_by = optional(list(string), ["grafana_folder", "alertname", "cluster"]) group_interval = optional(string, "5m") group_wait = optional(string, "30s") warning_repeat_interval = optional(string, "4h") })``` | `{}` | no |

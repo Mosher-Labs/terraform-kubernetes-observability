@@ -63,7 +63,7 @@ run "alert_list_filters_on_cluster" {
   }
 
   assert {
-    condition     = one([for p in jsondecode(grafana_dashboard.overview.config_json).panels : p if p.type == "alertlist"]).options.alertInstanceLabelFilter == "{cluster=\"Home Lab\"}"
+    condition     = one([for p in jsondecode(grafana_dashboard.overview.config_json).panels : p if p.type == "alertlist"]).options.alertInstanceLabelFilter == "{cluster=\"Home Lab\", heartbeat!=\"true\"}"
     error_message = "The alert list should show only this cluster's alerts."
   }
 }

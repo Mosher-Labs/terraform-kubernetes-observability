@@ -47,6 +47,7 @@ module "alerts" {
 | Name | Type |
 | ---- | ---- |
 | [grafana_folder.this](https://registry.terraform.io/providers/grafana/grafana/latest/docs/resources/folder) | resource |
+| [grafana_rule_group.heartbeat](https://registry.terraform.io/providers/grafana/grafana/latest/docs/resources/rule_group) | resource |
 | [grafana_rule_group.this](https://registry.terraform.io/providers/grafana/grafana/latest/docs/resources/rule_group) | resource |
 
 ## Inputs
@@ -62,6 +63,7 @@ module "alerts" {
 | disabled\_rules | IDs of catalog rules to leave out, such as `node_network_errors`. | `set(string)` | `[]` | no |
 | evaluation\_interval\_seconds | How often Grafana evaluates each rule group. | `number` | `60` | no |
 | folder\_title | Title of the Grafana folder that holds the alert rules. Defaults to "Kubernetes alerts (<cluster\_name>)". | `string` | `null` | no |
+| heartbeat\_enabled | Whether to create the heartbeat rule: it always fires while Grafana can query Prometheus, labeled heartbeat = "true", for modules/notifications to send to an outside heartbeat service. | `bool` | `false` | no |
 | labels | Extra labels added to every alert, for routing or ownership. | `map(string)` | `{}` | no |
 | overrides | Per-rule changes, keyed by rule ID: threshold, pending period (how long the condition must hold before the alert fires, such as "10m"), severity, or a paused flag. | ```map(object({ paused = optional(bool) pending_period = optional(string) severity = optional(string) threshold = optional(number) }))``` | `{}` | no |
 | workload\_selector | PromQL label matchers added to every workload rule, to scope them. For example `namespace!="kube-system"`. Empty means all namespaces. | `string` | `""` | no |

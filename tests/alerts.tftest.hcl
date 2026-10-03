@@ -27,8 +27,8 @@ run "k3s_has_apiserver_but_not_etcd" {
   }
 
   assert {
-    condition     = length(output.rule_ids) == 29
-    error_message = "Expected the 28 workload, node and synthetic rules plus apiserver_errors."
+    condition     = length(output.rule_ids) == 30
+    error_message = "Expected the 29 workload, node, synthetic and alerting rules plus apiserver_errors."
   }
 }
 
@@ -62,7 +62,7 @@ run "generic_includes_all_rules" {
   }
 
   assert {
-    condition     = length(output.rule_ids) == 30
+    condition     = length(output.rule_ids) == 31
     error_message = "A generic cluster should get every catalog rule."
   }
 }
@@ -360,5 +360,45 @@ run "backing_rule_ids_are_known_when_off" {
   assert {
     condition     = !contains(output.rule_ids, "rabbitmq_queue_backlog")
     error_message = "Overriding a backing-service rule that's off should be accepted and create nothing."
+  }
+}
+
+run "heartbeat_rule_is_opt_in" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name = "homelab"
+  }
+
+  assert {
+    condition     = length(grafana_rule_group.heartbeat) == 0
+    error_message = "No heartbeat rule unless heartbeat_enabled is set."
+  }
+}
+
+run "heartbeat_rule_always_fires_and_fails_quiet" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name      = "homelab"
+    heartbeat_enabled = true
+  }
+
+  assert {
+    condition     = one(grafana_rule_group.heartbeat[0].rule).labels.heartbeat == "true"
+    error_message = "The heartbeat rule needs the heartbeat label for routing."
+  }
+
+  assert {
+    condition     = one(grafana_rule_group.heartbeat[0].rule).exec_err_state == "OK" && one(grafana_rule_group.heartbeat[0].rule).no_data_state == "OK"
+    error_message = "Datasource errors must stop the heartbeat, not turn it into an error alert."
   }
 }
