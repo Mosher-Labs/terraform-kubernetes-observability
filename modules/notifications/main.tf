@@ -60,6 +60,9 @@ resource "grafana_contact_point" "this" {
   }
 
   lifecycle {
+    # See the heartbeat contact point: update the policy before deleting this.
+    create_before_destroy = true
+
     precondition {
       condition     = local.any_enabled
       error_message = "Enable at least one notification channel: slack, email, teams or webex."
@@ -81,6 +84,10 @@ resource "grafana_contact_point" "heartbeat" {
   }
 
   lifecycle {
+    # Grafana won't delete a contact point a policy still routes to. This
+    # makes Terraform update the policy first when the heartbeat is removed.
+    create_before_destroy = true
+
     precondition {
       condition     = var.manage_notification_policy
       error_message = "heartbeat needs manage_notification_policy, to route the heartbeat rule to its own contact point."
