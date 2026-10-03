@@ -402,3 +402,129 @@ run "heartbeat_rule_always_fires_and_fails_quiet" {
     error_message = "Datasource errors must stop the heartbeat, not turn it into an error alert."
   }
 }
+
+run "custom_rules_join_the_catalog" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name = "homelab"
+    custom_rules = {
+      argocd_app_unhealthy = {
+        expr           = "max by (name) (argocd_app_info{health_status!~\"Healthy|Progressing\"})"
+        group          = "argocd"
+        operator       = "gt"
+        pending_period = "15m"
+        severity       = "warning"
+        subject        = "{{ $labels.name }}"
+        summary        = "Argo CD app {{ $labels.name }} is unhealthy."
+        threshold      = 0
+        title          = "Argo CD app unhealthy"
+      }
+    }
+    overrides = { argocd_app_unhealthy = { severity = "critical" } }
+  }
+
+  assert {
+    condition     = contains(output.rule_ids, "argocd_app_unhealthy") && output.rules.argocd_app_unhealthy.title == "[homelab] Argo CD app unhealthy"
+    error_message = "A custom rule should be created with the cluster title prefix."
+  }
+
+  assert {
+    condition     = output.rules.argocd_app_unhealthy.severity == "critical" && output.rules.argocd_app_unhealthy.group == "argocd"
+    error_message = "Overrides should apply to custom rules, and their group should be kept."
+  }
+
+  assert {
+    condition     = contains(keys(grafana_rule_group.this), "argocd")
+    error_message = "A custom rule's group should become its own rule group."
+  }
+}
+
+run "custom_rules_can_be_disabled" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name = "homelab"
+    custom_rules = {
+      mine = {
+        expr           = "vector(1)"
+        group          = "custom"
+        operator       = "gt"
+        pending_period = "1m"
+        severity       = "info"
+        subject        = "x"
+        summary        = "x"
+        threshold      = 0
+        title          = "Mine"
+      }
+    }
+    disabled_rules = ["mine"]
+  }
+
+  assert {
+    condition     = !contains(output.rule_ids, "mine")
+    error_message = "disabled_rules should accept custom rule IDs."
+  }
+}
+
+run "custom_rules_cannot_reuse_catalog_ids" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name = "homelab"
+    custom_rules = {
+      node_disk_full = {
+        expr           = "vector(1)"
+        group          = "custom"
+        operator       = "gt"
+        pending_period = "1m"
+        severity       = "info"
+        subject        = "x"
+        summary        = "x"
+        threshold      = 0
+        title          = "Clash"
+      }
+    }
+  }
+
+  expect_failures = [grafana_folder.this]
+}
+
+run "custom_rules_need_a_valid_operator" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name = "homelab"
+    custom_rules = {
+      bad = {
+        expr           = "vector(1)"
+        group          = "custom"
+        operator       = "eq"
+        pending_period = "1m"
+        severity       = "info"
+        subject        = "x"
+        summary        = "x"
+        threshold      = 0
+        title          = "Bad"
+      }
+    }
+  }
+
+  expect_failures = [var.custom_rules]
+}

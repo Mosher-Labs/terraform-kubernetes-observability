@@ -74,6 +74,27 @@ variable "control_plane" {
   })
 }
 
+variable "custom_rules" {
+  default     = {}
+  description = "Your own rules, keyed by rule ID, in the catalog's shape: a PromQL `expr` returning the value to compare, `operator` (gt or lt) and `threshold`, `pending_period`, `severity`, `group`, `title`, `subject` and `summary`. They get the same labels, title prefix, overrides and disabled_rules support as catalog rules. workload_selector doesn't apply: write the full query. IDs can't reuse a catalog rule ID."
+  type = map(object({
+    expr           = string
+    group          = string
+    operator       = string
+    pending_period = string
+    severity       = string
+    subject        = string
+    summary        = string
+    threshold      = number
+    title          = string
+  }))
+
+  validation {
+    condition     = alltrue([for r in values(var.custom_rules) : contains(["gt", "lt"], r.operator) && contains(["critical", "info", "warning"], r.severity)])
+    error_message = "Each custom rule needs operator gt or lt, and severity critical, warning or info."
+  }
+}
+
 variable "disabled_rules" {
   default     = []
   description = "IDs of catalog rules to leave out, such as `node_network_errors`."

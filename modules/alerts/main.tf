@@ -3,6 +3,11 @@ resource "grafana_folder" "this" {
 
   lifecycle {
     precondition {
+      condition     = length(local.colliding_ids) == 0
+      error_message = "custom_rules reuses catalog rule IDs: ${join(", ", local.colliding_ids)}. Pick other IDs, or use overrides to change a catalog rule."
+    }
+
+    precondition {
       condition     = length(local.unknown_ids) == 0
       error_message = "Unknown rule IDs in disabled_rules or overrides: ${join(", ", local.unknown_ids)}."
     }
