@@ -142,6 +142,7 @@ variable "teams" {
   description = "Microsoft Teams channel: a Teams Workflows webhook `url`. Null disables it."
   sensitive   = true
   type = object({
+    icon_url      = optional(string)
     message       = optional(string)
     section_title = optional(string)
     title         = optional(string)
