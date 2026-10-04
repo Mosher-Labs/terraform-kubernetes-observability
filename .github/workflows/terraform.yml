@@ -13,7 +13,7 @@ permissions: read-all
 
 jobs:
   terraform:
-    uses: "Mosher-Labs/.github/.github/workflows/terraform-module.yml@cbe04ae6af70d804f7e1a177b237fe4dd85e46be"  # feat/terraform-module-workflow (test; re-pin to the release)
+    uses: "Mosher-Labs/.github/.github/workflows/terraform-module.yml@1c9333e19f2a9c8cd324288bab3f184819fffa6b"  # v0.11.0
     permissions:
       contents: read
     with:
