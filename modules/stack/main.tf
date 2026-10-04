@@ -60,3 +60,18 @@ resource "helm_release" "loki" {
   values           = concat([local.loki_values], var.loki.values)
   version          = var.loki.chart_version
 }
+
+resource "helm_release" "opentelemetry" {
+  count = var.opentelemetry.enabled ? 1 : 0
+  # The collector's ServiceMonitor needs kube-prometheus-stack's CRDs.
+  depends_on = [helm_release.kube_prometheus_stack]
+
+  chart            = "opentelemetry-kube-stack"
+  create_namespace = var.create_namespace
+  name             = var.opentelemetry.release_name
+  namespace        = var.namespace
+  repository       = "https://open-telemetry.github.io/opentelemetry-helm-charts"
+  timeout          = var.timeout_seconds
+  values           = concat([local.opentelemetry_values], var.opentelemetry.values)
+  version          = var.opentelemetry.chart_version
+}

@@ -21,6 +21,7 @@ output "installed" {
     var.blackbox_exporter.enabled ? "blackbox_exporter" : "",
     var.kube_prometheus_stack.enabled ? "kube_prometheus_stack" : "",
     var.loki.enabled ? "loki" : "",
+    var.opentelemetry.enabled ? "opentelemetry" : "",
   ])
 }
 
@@ -46,4 +47,12 @@ output "prometheus_datasource_uid" {
 
   description = "UID of Grafana's Prometheus datasource, for the root module's prometheus_datasource_uid, when kube_prometheus_stack is enabled."
   value       = var.kube_prometheus_stack.enabled ? "prometheus" : null
+}
+
+output "opentelemetry_instrumentation" {
+  # Wait for the install, so anything using this output runs after it.
+  depends_on = [helm_release.opentelemetry]
+
+  description = "The `<namespace>/<name>` of the Instrumentation, for pod annotations such as `instrumentation.opentelemetry.io/inject-sdk`, when opentelemetry is enabled."
+  value       = var.opentelemetry.enabled ? "${var.namespace}/${var.opentelemetry.release_name}" : null
 }
