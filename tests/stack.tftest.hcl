@@ -206,3 +206,125 @@ run "opentelemetry_without_kube_prometheus_stack_has_no_servicemonitor" {
     error_message = "Without kube-prometheus-stack there is no ServiceMonitor CRD, so the module shouldn't create one."
   }
 }
+
+run "datadog_agent_base_values" {
+  command = plan
+
+  module {
+    source = "./modules/stack"
+  }
+
+  variables {
+    datadog_agent = { enabled = true, api_key_secret_name = "datadog-secret" }
+  }
+
+  assert {
+    condition     = length(output.installed) == 1 && contains(output.installed, "datadog_agent")
+    error_message = "Only the Datadog Agent should be installed."
+  }
+
+  assert {
+    condition     = helm_release.datadog_agent[0].repository == "https://helm.datadoghq.com" && helm_release.datadog_agent[0].version == "3.251.1"
+    error_message = "The Agent should come from Datadog's chart repository at the pinned version."
+  }
+
+  assert {
+    condition     = yamldecode(helm_release.datadog_agent[0].values[0]).datadog.clusterName == "test" && yamldecode(helm_release.datadog_agent[0].values[0]).datadog.apiKeyExistingSecret == "datadog-secret"
+    error_message = "The Agent should take the cluster name and the existing API key Secret."
+  }
+
+  assert {
+    condition     = yamldecode(helm_release.datadog_agent[0].values[0]).datadog.kubeStateMetricsCore.enabled && yamldecode(helm_release.datadog_agent[0].values[0]).datadog.apm.portEnabled && yamldecode(helm_release.datadog_agent[0].values[0]).clusterAgent.enabled
+    error_message = "kubernetes_state_core, APM and the Cluster Agent should be on."
+  }
+
+  assert {
+    condition     = !yamldecode(helm_release.datadog_agent[0].values[0]).datadog.logs.enabled
+    error_message = "Logs should be off unless asked for."
+  }
+
+  assert {
+    condition     = helm_release.datadog_agent[0].set_sensitive == null
+    error_message = "With an existing Secret, no API key should be passed to Helm."
+  }
+}
+
+run "datadog_agent_needs_an_api_key" {
+  command = plan
+
+  module {
+    source = "./modules/stack"
+  }
+
+  variables {
+    datadog_agent = { enabled = true }
+  }
+
+  expect_failures = [helm_release.datadog_agent]
+}
+
+run "datadog_agent_on_k3s_with_control_plane_checks" {
+  command = plan
+
+  module {
+    source = "./modules/stack"
+  }
+
+  variables {
+    cluster_type    = "k3s"
+    datadog_api_key = "not-a-real-key"
+    datadog_agent = {
+      control_plane_checks = { enabled = true, etcd_prometheus_url = "http://10.0.0.1:2381/metrics" }
+      enabled              = true
+      logs                 = true
+    }
+  }
+
+  assert {
+    condition     = yamldecode(helm_release.datadog_agent[0].values[1]).datadog.criSocketPath == "/run/k3s/containerd/containerd.sock" && !yamldecode(helm_release.datadog_agent[0].values[1]).datadog.kubelet.tlsVerify
+    error_message = "k3s should use its own containerd socket and skip kubelet TLS verification."
+  }
+
+  assert {
+    condition     = contains(keys(yamldecode(helm_release.datadog_agent[0].values[2]).clusterAgent.confd), "kube_apiserver_metrics.yaml") && yamldecode(yamldecode(helm_release.datadog_agent[0].values[2]).clusterAgent.confd["etcd.yaml"]).instances[0].prometheus_url == "http://10.0.0.1:2381/metrics"
+    error_message = "Control-plane checks should add kube_apiserver_metrics and etcd cluster checks."
+  }
+
+  assert {
+    condition     = yamldecode(helm_release.datadog_agent[0].values[0]).datadog.logs.enabled && yamldecode(helm_release.datadog_agent[0].values[0]).datadog.logs.containerCollectAll
+    error_message = "logs should collect every container's logs."
+  }
+
+  assert {
+    condition     = length(helm_release.datadog_agent[0].set_sensitive) == 1 && helm_release.datadog_agent[0].set_sensitive[0].name == "datadog.apiKey"
+    error_message = "Without a Secret, the API key should be passed to Helm as a sensitive value."
+  }
+}
+
+run "datadog_agent_values_per_cluster_type" {
+  command = plan
+
+  module {
+    source = "./modules/stack"
+  }
+
+  variables {
+    cluster_type  = "eks"
+    datadog_agent = { enabled = true, api_key_secret_name = "datadog-secret", control_plane_checks = { enabled = true } }
+  }
+
+  assert {
+    condition     = yamldecode(helm_release.datadog_agent[0].values[2]).providers.eks.controlPlaneMonitoring && !can(yamldecode(helm_release.datadog_agent[0].values[2]).clusterAgent)
+    error_message = "On EKS, control-plane checks should use the chart's EKS control-plane monitoring instead of a cluster check."
+  }
+
+  assert {
+    condition     = yamldecode(local.datadog_cluster_values["gke-autopilot"]).providers.gke.autopilot && yamldecode(local.datadog_cluster_values["aks"]).providers.aks.enabled
+    error_message = "GKE Autopilot and AKS should turn on the chart's provider settings."
+  }
+
+  assert {
+    condition     = yamldecode(local.datadog_cluster_values["openshift"]).agents.podSecurity.securityContextConstraints.create && yamldecode(local.datadog_cluster_values["openshift"]).datadog.criSocketPath == "/var/run/crio/crio.sock"
+    error_message = "OpenShift should create SCCs and use CRI-O's socket."
+  }
+}

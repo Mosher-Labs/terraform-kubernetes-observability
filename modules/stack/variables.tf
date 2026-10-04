@@ -32,10 +32,49 @@ variable "cluster_name" {
   type        = string
 }
 
+variable "cluster_type" {
+  default     = "generic"
+  description = "Kind of cluster: eks, aks, gke, gke-autopilot, openshift, k3s or generic. Sets the Datadog Agent's provider-specific values, such as k3s's containerd socket."
+  type        = string
+
+  validation {
+    condition     = contains(["eks", "aks", "gke", "gke-autopilot", "openshift", "k3s", "generic"], var.cluster_type)
+    error_message = "cluster_type must be one of eks, aks, gke, gke-autopilot, openshift, k3s or generic."
+  }
+}
+
 variable "create_namespace" {
   default     = true
   description = "Whether Helm creates the namespace."
   type        = bool
+}
+
+variable "datadog_agent" {
+  default     = {}
+  description = <<-EOT
+    The Datadog Agent and Cluster Agent, for modules/datadog. It collects kube-state metrics (kubernetes_state_core), kubelet and host metrics, and APM traces (port 8126 and a socket); `logs` adds container logs. `api_key_secret_name` names an existing Secret in `namespace` with the API key under `api-key`, or set `datadog_api_key`. `control_plane_checks.enabled` adds API server metrics (EKS and OpenShift control-plane monitoring, or a kube_apiserver_metrics cluster check elsewhere); `etcd_prometheus_url` adds an etcd cluster check, for self-managed etcd that serves metrics over plain HTTP. `values` are extra Helm values files.
+  EOT
+  type = object({
+    api_key_secret_name = optional(string)
+    apm                 = optional(bool, true)
+    chart_version       = optional(string, "3.251.1")
+    control_plane_checks = optional(object({
+      enabled             = optional(bool, false)
+      etcd_prometheus_url = optional(string)
+    }), {})
+    enabled      = optional(bool, false)
+    logs         = optional(bool, false)
+    release_name = optional(string, "datadog")
+    site         = optional(string, "datadoghq.com")
+    values       = optional(list(string), [])
+  })
+}
+
+variable "datadog_api_key" {
+  default     = null
+  description = "Datadog API key, when datadog_agent.api_key_secret_name isn't set. The chart stores it in a Secret."
+  sensitive   = true
+  type        = string
 }
 
 variable "kube_prometheus_stack" {
