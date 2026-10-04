@@ -70,11 +70,15 @@ module "stack" {
   cluster_name          = "lab"
   kube_prometheus_stack = { enabled = true }
   loki                  = { enabled = true }
+  # Apps opt in with the annotation in module.stack.opentelemetry_instrumentation.
+  opentelemetry = { enabled = true }
 }
 
 module "observability" {
   source = "../.."
 
+  # Request metrics from apps sent through the OpenTelemetry collector.
+  alerts       = { apm = { enabled = true } }
   cluster_name = "lab"
   cluster_type = "k3s"
   dashboards = {

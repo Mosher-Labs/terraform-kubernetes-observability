@@ -68,6 +68,19 @@ variable "namespace" {
   type        = string
 }
 
+variable "opentelemetry" {
+  default     = {}
+  description = "The OpenTelemetry Operator, a collector that turns server spans into `http_server_request_duration_seconds` for the APM alerts and Services row, and an Instrumentation that apps opt into with a pod annotation. `go_auto_instrumentation` turns on the operator's eBPF sidecar for Go binaries, which runs privileged and fails on nodes with kernel lockdown. `values` are extra Helm values files."
+  type = object({
+    chart_version           = optional(string, "0.24.0")
+    collector_image         = optional(string, "ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.160.0")
+    enabled                 = optional(bool, false)
+    go_auto_instrumentation = optional(bool, false)
+    release_name            = optional(string, "opentelemetry")
+    values                  = optional(list(string), [])
+  })
+}
+
 variable "timeout_seconds" {
   default     = 600
   description = "How long Helm waits for each release to become ready."

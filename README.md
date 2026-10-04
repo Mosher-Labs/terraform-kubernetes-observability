@@ -30,9 +30,11 @@ managed Prometheus, or Grafana Cloud.
 - **Synthetic checks:** probe a list of URLs, and alert when one fails, gets
   slow, or its TLS certificate is about to expire.
 - **Opt-in installs** with `modules/stack`, one flag each: kube-prometheus-stack,
-  Loki, Grafana Alloy (pod logs to Loki) and the blackbox exporter (synthetic
-  checks). The pieces are wired together: Grafana gets a Loki datasource, Alloy
-  ships to Loki, and Prometheus scrapes the probes.
+  Loki, Grafana Alloy (pod logs to Loki), the blackbox exporter (synthetic
+  checks) and the OpenTelemetry Operator (request metrics for the APM alerts
+  from apps that opt in). The pieces are wired together: Grafana gets a Loki
+  datasource, Alloy ships to Loki, and Prometheus scrapes the probes and the
+  collector.
 - **Submodules you can use on their own:** `modules/alerts`,
   `modules/dashboards`, `modules/notifications` and `modules/stack`.
 

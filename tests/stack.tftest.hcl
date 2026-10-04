@@ -141,3 +141,68 @@ run "caller_values_come_after_the_modules" {
     error_message = "Caller values should be applied after the module's, so they win."
   }
 }
+
+run "opentelemetry_installs_operator_collector_and_instrumentation" {
+  command = plan
+
+  module {
+    source = "./modules/stack"
+  }
+
+  variables {
+    kube_prometheus_stack = { enabled = true }
+    opentelemetry         = { enabled = true }
+  }
+
+  assert {
+    condition     = length(helm_release.opentelemetry) == 1 && contains(output.installed, "opentelemetry")
+    error_message = "opentelemetry should install the kube-stack chart."
+  }
+
+  assert {
+    condition     = output.opentelemetry_instrumentation == "monitoring/opentelemetry"
+    error_message = "The Instrumentation should be <namespace>/<release_name>."
+  }
+
+  assert {
+    condition     = yamldecode(helm_release.opentelemetry[0].values[0]).instrumentation.exporter.endpoint == "http://opentelemetry-collector.monitoring.svc.cluster.local:4318"
+    error_message = "Apps should export to the collector's Service."
+  }
+
+  assert {
+    condition     = !yamldecode(helm_release.opentelemetry[0].values[0]).crds.installPrometheus && !yamldecode(helm_release.opentelemetry[0].values[0]).collectors.daemon.enabled
+    error_message = "The chart must not install the Prometheus CRDs (kube-prometheus-stack owns them) or its default daemonset collector."
+  }
+
+  assert {
+    condition     = yamldecode(helm_release.opentelemetry[0].values[0]).instrumentation.java.image != ""
+    error_message = "Agent images must be set explicitly; the webhook can't default them at install time."
+  }
+
+  assert {
+    condition     = yamldecode(helm_release.opentelemetry[0].values[0]).extraObjects[0].metadata.labels.release == "kube-prometheus-stack"
+    error_message = "The ServiceMonitor needs kube-prometheus-stack's release label to be scraped."
+  }
+
+  assert {
+    condition     = !yamldecode(helm_release.opentelemetry[0].values[0])["opentelemetry-operator"].manager.autoInstrumentation.go.enabled
+    error_message = "Go eBPF auto-instrumentation should be off by default."
+  }
+}
+
+run "opentelemetry_without_kube_prometheus_stack_has_no_servicemonitor" {
+  command = plan
+
+  module {
+    source = "./modules/stack"
+  }
+
+  variables {
+    opentelemetry = { enabled = true }
+  }
+
+  assert {
+    condition     = length(yamldecode(helm_release.opentelemetry[0].values[0]).extraObjects) == 0
+    error_message = "Without kube-prometheus-stack there is no ServiceMonitor CRD, so the module shouldn't create one."
+  }
+}
