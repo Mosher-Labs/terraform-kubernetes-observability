@@ -289,11 +289,14 @@ traffic. Override any rule by ID with `alerts.overrides`, or remove it with
 | `pod_crash_looping` | pods | Pod crash looping | > 5 for 1m | critical | |
 | `pod_pending` | pods | Pod stuck pending | > 0 for 5m | warning | |
 | `pod_waiting_failure` | pods | Pod cannot start | > 0 for 5m | critical | |
+| `pod_not_ready` | pods | Pod not ready | > 0 for 15m | warning | Running pods only |
 | `daemonset_not_ready` | workloads | DaemonSet pods not ready | > 0 for 15m | warning | |
 | `deployment_rollout_stuck` | workloads | Deployment rollout stuck | > 0 for 5m | warning | |
 | `deployment_unavailable` | workloads | Deployment has no available replicas | > 0 for 5m | critical | |
 | `deployment_under_replicated` | workloads | Deployment under-replicated | > 0 for 10m | warning | |
 | `hpa_at_max` | workloads | HPA pinned at max replicas | > 0.999 for 30m | warning | |
+| `job_failed` | workloads | Job failed | > 0 for 0s | warning | |
+| `job_not_completed` | workloads | Job running too long | > 43200 (12h) for 0s | warning | |
 | `statefulset_under_replicated` | workloads | StatefulSet under-replicated | > 0 for 15m | warning | |
 | `container_cpu_near_limit_critical` | resources | Container CPU at limit | > 90 for 15m | critical | |
 | `container_cpu_near_limit_warning` | resources | Container CPU near limit | > 80 for 15m | warning | |
@@ -301,20 +304,32 @@ traffic. Override any rule by ID with `alerts.overrides`, or remove it with
 | `container_ephemeral_storage_near_limit` | resources | Container ephemeral storage near limit | > 80 for 5m | critical | |
 | `container_memory_near_limit_critical` | resources | Container memory at limit | > 90 for 5m | critical | |
 | `container_memory_near_limit_warning` | resources | Container memory near limit | > 80 for 10m | warning | |
+| `persistent_volume_errors` | resources | PersistentVolume failed | > 0 for 5m | critical | Failed or Pending |
 | `pvc_near_full_critical` | resources | PersistentVolumeClaim critically full | > 90 for 5m | critical | |
 | `pvc_near_full_warning` | resources | PersistentVolumeClaim almost full | > 80 for 10m | warning | |
+| `pvc_inodes_near_full` | resources | PVC running out of inodes | > 90 for 10m | warning | |
 | `node_disk_full` | nodes | Node disk almost full | > 85 for 10m | critical | |
+| `kubelet_certificate_expiring` | nodes | Kubelet certificate expiring | < 604800 (7d) for 15m | warning | Needs the kubelet's certificate manager metrics; k3s has none |
+| `node_clock_not_synchronising` | nodes | Node clock not synchronising | < 1 for 10m | warning | |
+| `node_clock_skew` | nodes | Node clock skewed | > 0.05 for 10m | warning | Seconds |
+| `node_inodes_low` | nodes | Node running out of inodes | > 90 for 10m | warning | |
 | `node_memory_high` | nodes | Node memory high | > 90 for 10m | warning | |
 | `node_network_errors` | nodes | Node network errors | > 1 for 10m | warning | |
 | `node_not_ready` | nodes | Node not ready | > 0 for 2m | critical | |
 | `node_pressure` | nodes | Node under resource pressure | > 0 for 5m | warning | |
+| `node_readiness_flapping` | nodes | Node readiness flapping | > 2 for 0s | warning | Changes in 15m |
+| `node_systemd_service_failed` | nodes | systemd service failed | > 0 for 5m | warning | Needs node-exporter's systemd collector |
 | `scrape_target_down` | nodes | Metrics target down | < 1 for 10m | warning | |
 | `synthetic_check_failing` | synthetics | Synthetic check failing | < 1 for 2m | critical | Needs blackbox probes |
 | `synthetic_check_slow` | synthetics | Synthetic check slow | > 5 for 10m | warning | Needs blackbox probes |
 | `tls_certificate_expiring_critical` | synthetics | TLS certificate about to expire | < 3 for 1h | critical | Needs blackbox probes |
 | `tls_certificate_expiring_warning` | synthetics | TLS certificate expiring soon | < 14 for 1h | warning | Needs blackbox probes |
 | `notification_delivery_failing` | alerting | Notification delivery failing | > 0 for 0s | warning | Grafana's delivery counters, scraped by Prometheus |
+| `prometheus_config_reload_failed` | alerting | Prometheus config reload failed | < 1 for 10m | critical | |
+| `prometheus_not_ingesting` | alerting | Prometheus not ingesting | < 1 for 10m | critical | Samples per second |
+| `prometheus_rule_failures` | alerting | Prometheus rule failures | > 0 for 15m | warning | |
 | `apiserver_errors` | control-plane | API server error rate high | > 5 for 10m | critical | Needs `apiserver` metrics |
+| `apiserver_client_certificate_expiring` | control-plane | Client certificate expiring | < 604800 (7d) for 15m | warning | Needs `apiserver` metrics |
 | `etcd_no_leader` | control-plane | etcd member has no leader | < 1 for 1m | critical | Needs `etcd` metrics |
 
 Every alert carries the labels `cluster`, `severity` and `rule_id`, plus
