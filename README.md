@@ -35,8 +35,11 @@ managed Prometheus, or Grafana Cloud.
   from apps that opt in). The pieces are wired together: Grafana gets a Loki
   datasource, Alloy ships to Loki, and Prometheus scrapes the probes and the
   collector.
+- **A Datadog backend**, `modules/datadog`: the same catalog as Datadog
+  monitors, for clusters that send metrics to Datadog instead of Prometheus.
 - **Submodules you can use on their own:** `modules/alerts`,
-  `modules/dashboards`, `modules/notifications` and `modules/stack`.
+  `modules/dashboards`, `modules/datadog`, `modules/notifications` and
+  `modules/stack`.
 
 ## Usage
 
@@ -265,6 +268,33 @@ Rules are keyed by the exporter's `instance` label. `selector` scopes all of
 them, for example to one namespace. Managed services that only report to a
 cloud provider, such as Amazon DocumentDB through CloudWatch, need an exporter
 that turns those metrics into Prometheus ones first.
+
+## Datadog
+
+For a cluster that sends metrics to Datadog, call `modules/datadog` instead of
+the root module, and install the Agent with `modules/stack`'s `datadog_agent`
+flag. `modules/datadog` creates the alert catalog as Datadog monitors with the
+same rule IDs, so `overrides` and `disabled_rules` carry over, and sends alerts
+to Slack, email, Teams and Webex through Datadog.
+
+```hcl
+module "datadog_alerts" {
+  source = "github.com/Mosher-Labs/terraform-kubernetes-observability//modules/datadog?ref=<commit-sha>"  # vX.Y.Z
+
+  cluster_name = "prod"
+  notifications = {
+    slack = { account_name = "example", channel = "prod-alerts" }
+  }
+}
+```
+
+Every core, APM and backing-service rule has a monitor except Grafana's
+delivery alert, Prometheus' own health rules and the synthetics rules, plus
+`cluster_not_reporting`, which
+alerts when the cluster stops sending data. The control-plane rules are off
+until `control_plane` turns them on. See
+[modules/datadog](modules/datadog/README.md) for the mapping and the known
+differences, and [examples/datadog](examples/datadog).
 
 ## Cluster types
 

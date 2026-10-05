@@ -264,4 +264,86 @@ locals {
       }
     }] : []
   })
+
+  # Provider-specific values per cluster type. EKS, GKE and generic clusters
+  # work with the chart's defaults.
+  datadog_cluster_values = {
+    # The chart can't detect AKS. This turns on its kubelet TLS settings.
+    aks     = yamlencode({ providers = { aks = { enabled = true } } })
+    eks     = yamlencode({})
+    generic = yamlencode({})
+    gke     = yamlencode({})
+    # Autopilot allows only the workloads it has approved, so the chart
+    # drops what Autopilot refuses, such as host paths.
+    gke-autopilot = yamlencode({ providers = { gke = { autopilot = true } } })
+    # k3s runs its own containerd, and its kubelet serves a self-signed
+    # certificate.
+    k3s = yamlencode({
+      datadog = {
+        criSocketPath = "/run/k3s/containerd/containerd.sock"
+        kubelet       = { tlsVerify = false }
+      }
+    })
+    # OpenShift needs SecurityContextConstraints for the Agents, uses CRI-O,
+    # and its kubelet certificate isn't signed by the service account CA.
+    openshift = yamlencode({
+      agents       = { podSecurity = { securityContextConstraints = { create = true } } }
+      clusterAgent = { podSecurity = { securityContextConstraints = { create = true } } }
+      datadog = {
+        criSocketPath = "/var/run/crio/crio.sock"
+        kubelet       = { tlsVerify = false }
+      }
+    })
+  }
+
+  # API server metrics come from EKS's and OpenShift's control-plane
+  # monitoring, or elsewhere from a kube_apiserver_metrics cluster check
+  # against the kubernetes Service. etcd is a cluster check on the URL given.
+  datadog_control_plane_checks = merge(
+    var.datadog_agent.control_plane_checks.enabled && !contains(["eks", "openshift"], var.cluster_type) ? {
+      "kube_apiserver_metrics.yaml" = yamlencode({
+        cluster_check = true
+        init_config   = {}
+        instances = [{
+          bearer_token_auth = true
+          prometheus_url    = "https://kubernetes.default.svc/metrics"
+          tls_ca_cert       = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        }]
+      })
+    } : {},
+    var.datadog_agent.control_plane_checks.etcd_prometheus_url != null ? {
+      "etcd.yaml" = yamlencode({
+        cluster_check = true
+        init_config   = {}
+        instances     = [{ prometheus_url = var.datadog_agent.control_plane_checks.etcd_prometheus_url }]
+      })
+    } : {},
+  )
+
+  datadog_control_plane_values = yamlencode(merge(
+    length(local.datadog_control_plane_checks) > 0 ? { clusterAgent = { confd = local.datadog_control_plane_checks } } : {},
+    var.datadog_agent.control_plane_checks.enabled && var.cluster_type == "eks" ? { providers = { eks = { controlPlaneMonitoring = true } } } : {},
+    var.datadog_agent.control_plane_checks.enabled && var.cluster_type == "openshift" ? { providers = { openshift = { controlPlaneMonitoring = true } } } : {},
+  ))
+
+  datadog_values = yamlencode({
+    clusterAgent = { enabled = true }
+    datadog = merge(
+      {
+        apm = {
+          portEnabled   = var.datadog_agent.apm
+          socketEnabled = var.datadog_agent.apm
+        }
+        # modules/datadog scopes its monitors to this, as kube_cluster_name.
+        clusterName          = var.cluster_name
+        kubeStateMetricsCore = { enabled = true }
+        logs = {
+          containerCollectAll = var.datadog_agent.logs
+          enabled             = var.datadog_agent.logs
+        }
+        site = var.datadog_agent.site
+      },
+      var.datadog_agent.api_key_secret_name != null ? { apiKeyExistingSecret = var.datadog_agent.api_key_secret_name } : {},
+    )
+  })
 }
