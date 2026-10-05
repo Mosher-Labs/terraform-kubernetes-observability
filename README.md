@@ -436,12 +436,14 @@ traffic. Override any rule by ID with `alerts.overrides`, or remove it with
 | `node_not_ready` | nodes | Node not ready | > 0 for 2m | critical | |
 | `node_pressure` | nodes | Node under resource pressure | > 0 for 5m | warning | |
 | `node_readiness_flapping` | nodes | Node readiness flapping | > 2 for 0s | warning | Changes in 15m |
-| `node_systemd_service_failed` | nodes | systemd service failed | > 0 for 5m | warning | Needs node-exporter's systemd collector |
+| `node_systemd_service_failed` | nodes | systemd service not running | < 1 for 5m | warning | A watched unit that isn't active, failed or stopped. Needs node-exporter's systemd collector. The ID keeps "failed" for existing overrides |
 | `scrape_target_down` | nodes | Metrics target down | < 1 for 10m | warning | |
 | `synthetic_check_failing` | synthetics | Synthetic check failing | < 1 for 2m | critical | Needs blackbox probes |
 | `synthetic_check_slow` | synthetics | Synthetic check slow | > 5 for 10m | warning | Needs blackbox probes |
 | `tls_certificate_expiring_critical` | synthetics | TLS certificate about to expire | < 3 for 1h | critical | Needs blackbox probes |
 | `tls_certificate_expiring_warning` | synthetics | TLS certificate expiring soon | < 14 for 1h | warning | Needs blackbox probes |
+| `x509_certificate_expiring_critical` | certificates | Certificate about to expire | < 7 for 1h | critical | Days. Needs x509-certificate-exporter |
+| `x509_certificate_expiring_warning` | certificates | Certificate expiring soon | < 30 for 1h | warning | Days. Needs x509-certificate-exporter |
 | `notification_delivery_failing` | alerting | Notification delivery failing | > 0 for 0s | warning | Grafana's delivery counters, scraped by Prometheus |
 | `prometheus_config_reload_failed` | alerting | Prometheus config reload failed | < 1 for 10m | critical | |
 | `prometheus_not_ingesting` | alerting | Prometheus not ingesting | < 1 for 10m | critical | Samples per second |
