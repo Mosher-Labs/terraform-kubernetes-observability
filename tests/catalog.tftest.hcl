@@ -26,7 +26,7 @@ run "grafana" {
   }
 
   assert {
-    condition     = length(output.rules) == 68 && length(output.known_rule_ids) == 68
+    condition     = length(output.rules) == 70 && length(output.known_rule_ids) == 70
     error_message = "Expected every rule except cluster_not_reporting, which Grafana skips."
   }
 
@@ -55,8 +55,8 @@ run "datadog" {
   }
 
   assert {
-    condition     = length(output.skipped_rules) == 8 && alltrue([for reason in values(output.skipped_rules) : reason != ""])
-    error_message = "Datadog should skip 8 rules, each with a reason."
+    condition     = length(output.skipped_rules) == 10 && alltrue([for reason in values(output.skipped_rules) : reason != ""])
+    error_message = "Datadog should skip 10 rules, each with a reason."
   }
 }
 
@@ -81,8 +81,8 @@ run "every_rule_covers_every_backend" {
   }
 
   assert {
-    condition     = setunion(run.grafana.known_rule_ids, keys(run.grafana.skipped_rules)) == setunion(run.datadog.known_rule_ids, keys(run.datadog.skipped_rules)) && length(setunion(run.grafana.known_rule_ids, keys(run.grafana.skipped_rules))) == 69
-    error_message = "Both backends should account for the same 69 rules, as a block or a skip."
+    condition     = setunion(run.grafana.known_rule_ids, keys(run.grafana.skipped_rules)) == setunion(run.datadog.known_rule_ids, keys(run.datadog.skipped_rules)) && length(setunion(run.grafana.known_rule_ids, keys(run.grafana.skipped_rules))) == 71
+    error_message = "Both backends should account for the same 71 rules, as a block or a skip."
   }
 }
 
@@ -286,8 +286,8 @@ run "control_plane_and_groups_gate_rules" {
   }
 
   assert {
-    condition     = length(output.rule_ids) == 44 && length(output.known_rule_ids) == 68
-    error_message = "By default, expected the 43 core rules plus etcd_no_leader, out of 68 known."
+    condition     = length(output.rule_ids) == 46 && length(output.known_rule_ids) == 70
+    error_message = "By default, expected the 45 core rules plus etcd_no_leader, out of 70 known."
   }
 }
 

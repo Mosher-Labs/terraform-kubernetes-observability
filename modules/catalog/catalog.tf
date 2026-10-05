@@ -697,12 +697,14 @@ locals {
       threshold = 2
       title     = "Node readiness flapping"
     }
+    # The ID keeps "failed" so existing overrides and disabled_rules still apply.
     node_systemd_service_failed = {
       # Needs the Agent's systemd check, which isn't on by default. Without it
-      # there's no data and the monitor stays quiet.
+      # there's no data and the monitor stays quiet. The check goes critical
+      # for any state but running, including a unit that was stopped.
       datadog = {
         query   = "\"systemd.unit.state\".over($${tags}).by(\"host\",\"unit\").last($${last}).count_by_status()"
-        summary = "systemd unit {{unit.name}} on {{host.name}} has failed."
+        summary = "systemd unit {{unit.name}} on {{host.name}} is not running."
         # A service check's threshold counts consecutive failed runs, not a value. The
         # Agent runs each check every 15 seconds, so 20 is about 5 minutes.
         threshold = 20
@@ -711,16 +713,19 @@ locals {
       grafana = {
         # Needs node-exporter's systemd collector (--collector.systemd), which
         # is off by default. Without it this rule has no data and stays quiet.
-        expr           = "max by (instance, name) (node_systemd_unit_state{state=\"failed\"})"
+        # The collector's unit list is narrow (the unit-include flag), so a
+        # unit that isn't active is a problem, whether it failed or was
+        # stopped. A unit a node doesn't have doesn't appear, so can't fire.
+        expr           = "min by (instance, name) (node_systemd_unit_state{state=\"active\"})"
         pending_period = "5m"
         subject        = "{{ $labels.name }} on {{ $labels.instance }}"
-        summary        = "systemd unit {{ $labels.name }} on {{ $labels.instance }} has failed."
+        summary        = "systemd unit {{ $labels.name }} on {{ $labels.instance }} is not running."
       }
       group     = "nodes"
-      operator  = "gt"
+      operator  = "lt"
       severity  = "warning"
-      threshold = 0
-      title     = "systemd service failed"
+      threshold = 1
+      title     = "systemd service not running"
     }
     scrape_target_down = {
       # The closest match to Prometheus' `up`: an Agent check (an integration
@@ -815,6 +820,45 @@ locals {
       severity  = "warning"
       threshold = 14
       title     = "TLS certificate expiring soon"
+    }
+
+    # ── Certificates (x509-certificate-exporter) ──────────────────────────
+    # These read x509_cert_not_after from x509-certificate-exporter, for
+    # certificates on the nodes' disks, such as k3s's (where the kubelet's
+    # certificate metrics don't exist). With no exporter they have no data and
+    # stay quiet. k3s renews a certificate only when it starts within 90 days
+    # of expiry, so warn with a month to spare, then page a week out.
+    x509_certificate_expiring_critical = {
+      datadog = {
+        skip = "Needs x509-certificate-exporter scraped by an Agent OpenMetrics check, which isn't set up. Tracked in an issue."
+      }
+      grafana = {
+        expr           = "min by (filepath, subject_CN) ((x509_cert_not_after - time()) / 86400)"
+        pending_period = "1h"
+        subject        = "{{ $labels.subject_CN }} ({{ $labels.filepath }})"
+        summary        = "The certificate {{ $labels.subject_CN }} ({{ $labels.filepath }}) expires in {{ humanize $values.A.Value }} days. Restart k3s to renew it, or replace the certificate."
+      }
+      group     = "certificates"
+      operator  = "lt"
+      severity  = "critical"
+      threshold = 7
+      title     = "Certificate about to expire"
+    }
+    x509_certificate_expiring_warning = {
+      datadog = {
+        skip = "Needs x509-certificate-exporter scraped by an Agent OpenMetrics check, which isn't set up. Tracked in an issue."
+      }
+      grafana = {
+        expr           = "min by (filepath, subject_CN) ((x509_cert_not_after - time()) / 86400)"
+        pending_period = "1h"
+        subject        = "{{ $labels.subject_CN }} ({{ $labels.filepath }})"
+        summary        = "The certificate {{ $labels.subject_CN }} ({{ $labels.filepath }}) expires in {{ humanize $values.A.Value }} days. Restart k3s to renew it, or replace the certificate."
+      }
+      group     = "certificates"
+      operator  = "lt"
+      severity  = "warning"
+      threshold = 30
+      title     = "Certificate expiring soon"
     }
 
     # ── Alerting (the notification pipeline itself) ───────────────────────

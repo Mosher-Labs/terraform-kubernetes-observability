@@ -13,8 +13,8 @@ run "catalog_rules_are_mapped_or_skipped" {
   }
 
   assert {
-    condition     = length(module.catalog.known_rule_ids) == 61 && length(output.skipped_rules) == 8
-    error_message = "Expected 60 mapped catalog rules plus cluster_not_reporting, and 8 skipped."
+    condition     = length(module.catalog.known_rule_ids) == 61 && length(output.skipped_rules) == 10
+    error_message = "Expected 60 mapped catalog rules plus cluster_not_reporting, and 10 skipped."
   }
 
   assert {
