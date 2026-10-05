@@ -60,7 +60,7 @@ repos:
   # Keeps the revs above current and frozen to commit SHAs. Checks at most once
   # a day, and only takes releases that are at least a week old.
   - repo: https://github.com/mosher-labs/pre-commit-autoupdate
-    rev: 980093cc39eef7c877c585acf14cb6a8b255590e  # frozen: v1.2.1
+    rev: f5f1bacb246f72c3b5dfd4b1e2052aa727f944f4  # frozen: v1.2.7
     hooks:
       - id: autoupdate
         args: [--freeze, --interval-hours, "24", --min-age-days, "7"]
