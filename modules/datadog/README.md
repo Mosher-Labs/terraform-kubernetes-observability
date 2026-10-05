@@ -89,7 +89,7 @@ terraform import 'module.datadog_alerts.datadog_integration_slack_channel.this[0
 | Resources, PVC inodes, kubelet certificates | `kubernetes.*` from the kubelet check |
 | Nodes | `system.*` host metrics (disk, inodes, memory, network) and `kubernetes_state.node.*` |
 | `node_clock_skew`, `node_clock_not_synchronising` | The Agent's NTP check: `ntp.offset`, and the `ntp.in_sync` service check |
-| `node_systemd_service_failed` | The `systemd.unit.state` service check. Needs the Agent's systemd check, which is off by default. |
+| `node_systemd_service_failed` | The `systemd.unit.state` service check, which goes critical for any state but running. Needs the Agent's systemd check, which is off by default. |
 | `scrape_target_down` | The `datadog.agent.check_status` service check, per check and host |
 | `apiserver_errors`, `apiserver_client_certificate_expiring`, `etcd_no_leader` | The kube_apiserver_metrics and etcd checks. Off until `control_plane` turns them on. |
 | APM | `trace.<span_name>.hits`, `.errors` and the `trace.<span_name>` latency distribution, by `service` (and `resource_name` per endpoint) |
@@ -103,6 +103,7 @@ These rules have no monitor here:
 | `notification_delivery_failing` | Watches Grafana's notification pipeline. |
 | `prometheus_config_reload_failed`, `prometheus_not_ingesting`, `prometheus_rule_failures` | Prometheus' own health. This backend has no Prometheus; `cluster_not_reporting` catches the Agent going quiet. |
 | `synthetic_check_failing`, `synthetic_check_slow`, `tls_certificate_expiring_critical`, `tls_certificate_expiring_warning` | Datadog Synthetics, tracked in an issue. |
+| `x509_certificate_expiring_critical`, `x509_certificate_expiring_warning` | They read x509-certificate-exporter, which needs an Agent OpenMetrics check that isn't set up. Tracked in an issue. |
 
 ### Known differences from the Grafana backend
 
