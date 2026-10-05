@@ -27,12 +27,12 @@ run "grafana" {
 
   assert {
     condition     = length(output.rules) == 70 && length(output.known_rule_ids) == 70
-    error_message = "Expected every rule except cluster_not_reporting, which Grafana skips."
+    error_message = "Expected every rule except the two Datadog-only ones, which Grafana skips."
   }
 
   assert {
-    condition     = keys(output.skipped_rules) == ["cluster_not_reporting"] && output.skipped_rules.cluster_not_reporting != ""
-    error_message = "Only cluster_not_reporting should be skipped on Grafana, with a reason."
+    condition     = keys(output.skipped_rules) == ["agent_not_reporting", "cluster_not_reporting"] && alltrue([for reason in values(output.skipped_rules) : reason != ""])
+    error_message = "Only agent_not_reporting and cluster_not_reporting should be skipped on Grafana, each with a reason."
   }
 }
 
@@ -50,8 +50,8 @@ run "datadog" {
   }
 
   assert {
-    condition     = length(output.rules) == 61 && length(output.known_rule_ids) == 61
-    error_message = "Expected every rule that has a Datadog block, 60 shared with Grafana plus cluster_not_reporting."
+    condition     = length(output.rules) == 62 && length(output.known_rule_ids) == 62
+    error_message = "Expected every rule that has a Datadog block, 60 shared with Grafana plus agent_not_reporting and cluster_not_reporting."
   }
 
   assert {
@@ -81,8 +81,8 @@ run "every_rule_covers_every_backend" {
   }
 
   assert {
-    condition     = setunion(run.grafana.known_rule_ids, keys(run.grafana.skipped_rules)) == setunion(run.datadog.known_rule_ids, keys(run.datadog.skipped_rules)) && length(setunion(run.grafana.known_rule_ids, keys(run.grafana.skipped_rules))) == 71
-    error_message = "Both backends should account for the same 71 rules, as a block or a skip."
+    condition     = setunion(run.grafana.known_rule_ids, keys(run.grafana.skipped_rules)) == setunion(run.datadog.known_rule_ids, keys(run.datadog.skipped_rules)) && length(setunion(run.grafana.known_rule_ids, keys(run.grafana.skipped_rules))) == 72
+    error_message = "Both backends should account for the same 72 rules, as a block or a skip."
   }
 }
 

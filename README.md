@@ -293,7 +293,8 @@ module "datadog_alerts" {
 Every core, APM and backing-service rule has a monitor except Grafana's
 delivery alert, Prometheus' own health rules and the synthetics rules, plus
 `cluster_not_reporting`, which
-alerts when the cluster stops sending data. The control-plane rules are off
+alerts when the cluster stops sending data, and `agent_not_reporting`, which
+alerts when one node's Agent stops. The control-plane rules are off
 until `control_plane` turns them on. See
 [modules/datadog](modules/datadog/README.md) for the mapping and the known
 differences, and [examples/datadog](examples/datadog).

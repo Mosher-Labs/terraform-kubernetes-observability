@@ -37,7 +37,7 @@ backend you picked. Overrides are applied and every placeholder is filled in.
 | Backend | Fields |
 | --- | --- |
 | `grafana` | `expr` (PromQL, evaluated as an instant query), `pending_period`, `subject`, `summary` |
-| `datadog` | `query`, `summary`, `window`, and where a rule sets them `type`, `require_full_window`, `on_missing_data` and `default_zero` |
+| `datadog` | `query`, `summary`, `window`, and where a rule sets them `type`, `require_full_window`, `on_missing_data`, `notify_no_data`, `no_data_timeframe` (minutes) and `default_zero` |
 
 Queries and text in the catalog are templates, filled in with
 `templatestring()`. A rule writes `$${name}` in HCL. The variables are `metric`,
@@ -88,7 +88,7 @@ fields each backend's block replaces.
 | coverage\_gaps | Rules that lack a shared field, or a block or skip reason for a backend, as backend => rule IDs. Empty lists mean the catalog is complete. `incomplete` lists rules that miss a shared field. |
 | known\_rule\_ids | Every rule ID this backend can render, whether or not it is enabled. |
 | rule\_ids | IDs of the rules turned on, after the apm, backing\_services and control\_plane flags and disabled\_rules are applied. |
-| rules | The rules turned on, keyed by rule ID. Each has its shared fields (group, title, severity, operator, threshold, and requires and workload where set), `paused`, and the backend's fields: grafana gives expr, pending\_period, subject and summary; datadog gives query (the monitor query without its comparison, or the full query for a service check), summary, window and, where set, type, require\_full\_window, on\_missing\_data and default\_zero. Overrides are applied and every placeholder is filled in. |
+| rules | The rules turned on, keyed by rule ID. Each has its shared fields (group, title, severity, operator, threshold, and requires and workload where set), `paused`, and the backend's fields: grafana gives expr, pending\_period, subject and summary; datadog gives query (the monitor query without its comparison, or the full query for a service check), summary, window and, where set, type, require\_full\_window, on\_missing\_data, notify\_no\_data, no\_data\_timeframe and default\_zero. Overrides are applied and every placeholder is filled in. |
 | skipped\_rules | Rules this backend can't express, with the reason and what to use instead. |
 <!-- END_TF_DOCS -->
 <!-- markdownlint-enable -->

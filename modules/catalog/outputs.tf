@@ -28,7 +28,7 @@ output "rule_ids" {
 }
 
 output "rules" {
-  description = "The rules turned on, keyed by rule ID. Each has its shared fields (group, title, severity, operator, threshold, and requires and workload where set), `paused`, and the backend's fields: grafana gives expr, pending_period, subject and summary; datadog gives query (the monitor query without its comparison, or the full query for a service check), summary, window and, where set, type, require_full_window, on_missing_data and default_zero. Overrides are applied and every placeholder is filled in."
+  description = "The rules turned on, keyed by rule ID. Each has its shared fields (group, title, severity, operator, threshold, and requires and workload where set), `paused`, and the backend's fields: grafana gives expr, pending_period, subject and summary; datadog gives query (the monitor query without its comparison, or the full query for a service check), summary, window and, where set, type, require_full_window, on_missing_data, notify_no_data, no_data_timeframe and default_zero. Overrides are applied and every placeholder is filled in."
   value       = local.rules
 
   precondition {
