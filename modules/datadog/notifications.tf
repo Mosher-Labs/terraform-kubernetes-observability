@@ -29,10 +29,9 @@ resource "datadog_webhook" "webex" {
   encode_as      = "json"
   name           = local.webex_name
   payload = local.webex_bot_enabled ? jsonencode({
-    files    = ["$SNAPSHOT"]
-    markdown = local.webex_markdown
+    markdown = local.webex_graph_markdown
     roomId   = var.notifications.webex.room_id
-  }) : jsonencode({ markdown = local.webex_markdown })
+  }) : jsonencode({ markdown = local.webex_graph_markdown })
   url = local.webex_bot_enabled ? var.notifications.webex.api_url : var.notifications.webex.webhook_url
 
   depends_on = [datadog_webhook_custom_variable.webex_token]

@@ -50,10 +50,9 @@ the Grafana backend's titles.
 `name` sets the Teams and Webex handle names, and defaults to
 `kubernetes-<cluster_name>`.
 
-Slack shows each alert's graph. With a Webex bot, metric monitors attach the
-graph as an image (`@webhook-<name>`), and service checks, which have no graph,
-go to a text-only webhook (`@webhook-<name>-text`). An incoming Webex webhook
-can't attach images, so it sends text for every monitor.
+Slack shows each alert's graph. Webex can't show images inline, so its messages
+link the graph instead ("📈 View graph"). With a Webex bot, service checks,
+which have no graph, go to a text-only webhook (`@webhook-<name>-text`).
 
 If the Slack channel was already added in Datadog's Slack tile, `apply` fails
 with "Channel is already configured". Import it first:
