@@ -13,8 +13,8 @@ run "catalog_rules_are_mapped_or_skipped" {
   }
 
   assert {
-    condition     = length(module.catalog.known_rule_ids) == 61 && length(output.skipped_rules) == 10
-    error_message = "Expected 60 mapped catalog rules plus cluster_not_reporting, and 10 skipped."
+    condition     = length(module.catalog.known_rule_ids) == 62 && length(output.skipped_rules) == 10
+    error_message = "Expected 60 mapped catalog rules plus agent_not_reporting and cluster_not_reporting, and 10 skipped."
   }
 
   assert {
@@ -23,8 +23,8 @@ run "catalog_rules_are_mapped_or_skipped" {
   }
 
   assert {
-    condition     = length(output.rule_ids) == 36
-    error_message = "By default, expected the 35 core rules without control-plane, APM or backing-service rules, plus cluster_not_reporting."
+    condition     = length(output.rule_ids) == 37
+    error_message = "By default, expected the 35 core rules without control-plane, APM or backing-service rules, plus agent_not_reporting and cluster_not_reporting."
   }
 
   assert {
@@ -190,7 +190,7 @@ run "apm_backing_and_control_plane_rules" {
   }
 
   assert {
-    condition     = length(output.rule_ids) == 36 + 3 + 6 + 4 + 3
+    condition     = length(output.rule_ids) == 37 + 3 + 6 + 4 + 3
     error_message = "Expected the default rules plus the 3 control-plane rules, the 6 APM rules, 4 Postgres and 3 Redis rules."
   }
 
@@ -293,5 +293,33 @@ run "deleted_objects_resolve" {
   assert {
     condition     = !strcontains(local.monitors["cluster_not_reporting"].query, "default_zero")
     error_message = "Rules that alert below a threshold must keep their gaps, or a 0 would fire them."
+  }
+}
+
+run "agent_not_reporting_notifies_on_no_data" {
+  command = plan
+
+  variables {
+    cluster_name = "homelab"
+  }
+
+  assert {
+    condition     = local.monitors["agent_not_reporting"].type == "service check" && local.monitors["agent_not_reporting"].query == "\"datadog.agent.up\".over(\"kube_cluster_name:homelab\").by(\"host\").last(2).count_by_status()" && local.monitors["agent_not_reporting"].threshold == 1
+    error_message = "agent_not_reporting should be a service check on datadog.agent.up per host, alerting after 1 failed run."
+  }
+
+  assert {
+    condition     = local.monitors["agent_not_reporting"].notify_no_data == true && local.monitors["agent_not_reporting"].no_data_timeframe == 10
+    error_message = "agent_not_reporting must notify on no data after 10 minutes: a dead Agent sends no status, and Datadog requires it for this host-level check."
+  }
+
+  assert {
+    condition     = datadog_monitor.this["agent_not_reporting"].notify_no_data == true && datadog_monitor.this["agent_not_reporting"].no_data_timeframe == 10 && datadog_monitor.this["agent_not_reporting"].type == "service check"
+    error_message = "The no-data options should reach the monitor resource."
+  }
+
+  assert {
+    condition     = alltrue([for id, m in local.monitors : m.notify_no_data == null && m.no_data_timeframe == null if id != "agent_not_reporting"])
+    error_message = "Other rules should leave notify_no_data and no_data_timeframe unset."
   }
 }

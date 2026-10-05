@@ -61,8 +61,10 @@ locals {
       name         = "[${var.cluster_name}] ${r.title}"
       # Datadog's defaults apply when a rule doesn't set these. Service checks
       # take neither.
-      on_missing_data = local.service_check[id] ? null : try(r.on_missing_data, "default")
-      priority        = local.priorities[r.severity]
+      no_data_timeframe = try(r.no_data_timeframe, null)
+      notify_no_data    = try(r.notify_no_data, null)
+      on_missing_data   = local.service_check[id] ? null : try(r.on_missing_data, "default")
+      priority          = local.priorities[r.severity]
       # Metric monitors: the query with the comparison against the threshold
       # added. Service checks: the query as it is.
       query = local.service_check[id] ? r.query : format("%s %s %s",

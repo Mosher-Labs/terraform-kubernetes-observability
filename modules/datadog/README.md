@@ -87,6 +87,13 @@ terraform import 'module.datadog_alerts.datadog_integration_slack_channel.this[0
 - `cluster_not_reporting` exists only here. Datadog runs outside the cluster,
   so it alerts when the cluster stops sending data, which is the heartbeat's job
   on the Grafana backend.
+- `agent_not_reporting` exists only here. It watches the `datadog.agent.up`
+  service check per host, so it alerts when one node's Agent stops. A dead
+  Agent sends no critical status, only nothing, and Datadog requires a monitor
+  on this host-level check to notify on no data. So the rule sets
+  `notify_no_data` and a `no_data_timeframe` of 10 minutes, and the no-data
+  notification is the alert. A catalog rule's Datadog block can set both keys.
+  Grafana skips the rule: Prometheus' own `up` covers it (`scrape_target_down`).
 
 | Rules | Datadog source |
 | --- | --- |
@@ -96,6 +103,7 @@ terraform import 'module.datadog_alerts.datadog_integration_slack_channel.this[0
 | `node_clock_skew`, `node_clock_not_synchronising` | The Agent's NTP check: `ntp.offset`, and the `ntp.in_sync` service check |
 | `node_systemd_service_failed` | The `systemd.unit.state` service check, which goes critical for any state but running. Needs the Agent's systemd check, which is off by default. |
 | `scrape_target_down` | The `kubernetes.kubelet.check` service check, per host |
+| `agent_not_reporting` | The `datadog.agent.up` service check, per host, with no-data notification after 10 minutes |
 | `apiserver_errors`, `apiserver_client_certificate_expiring`, `etcd_no_leader` | The kube_apiserver_metrics and etcd checks. Off until `control_plane` turns them on. |
 | APM | `trace.<span_name>.hits`, `.errors` and the `trace.<span_name>` latency distribution, by `service` (and `resource_name` per endpoint) |
 | Postgres, MySQL, MongoDB, Redis | `postgresql.*`, `mysql.*`, `mongodb.*`, `redis.*`, and each integration's `can_connect` service check |

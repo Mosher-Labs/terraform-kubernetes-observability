@@ -22,6 +22,8 @@ resource "datadog_monitor" "this" {
   include_tags        = true
   message             = each.value.message
   name                = each.value.name
+  no_data_timeframe   = each.value.no_data_timeframe
+  notify_no_data      = each.value.notify_no_data
   on_missing_data     = each.value.on_missing_data
   priority            = each.value.priority
   query               = each.value.query

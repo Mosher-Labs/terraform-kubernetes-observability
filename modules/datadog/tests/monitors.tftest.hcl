@@ -13,7 +13,7 @@ run "monitors_map_the_catalog" {
   }
 
   assert {
-    condition     = length(datadog_monitor.this) == 36
+    condition     = length(datadog_monitor.this) == 37
     error_message = "Expected one monitor per catalog rule."
   }
 

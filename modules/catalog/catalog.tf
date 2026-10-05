@@ -1004,6 +1004,27 @@ locals {
     }
 
     # ── Datadog only ──────────────────────────────────────────────────────
+    # The Agent's own state, per host. When an Agent dies it sends no CRITICAL
+    # status, only nothing, so the alert is the no-data notification. Datadog
+    # also requires it: a monitor on this host-level check must set
+    # notify_no_data.
+    agent_not_reporting = {
+      datadog = {
+        no_data_timeframe = 10
+        notify_no_data    = true
+        query             = "\"datadog.agent.up\".over($${tags}).by(\"host\").last($${last}).count_by_status()"
+        summary           = "The Datadog Agent on {{host.name}} has stopped reporting for 10 minutes. Alerts for that node go quiet until it is back."
+        type              = "service check"
+      }
+      grafana = {
+        skip = "Prometheus' own up covers it: scrape_target_down."
+      }
+      group     = "nodes"
+      operator  = "lt"
+      severity  = "warning"
+      threshold = 1
+      title     = "Datadog Agent not reporting"
+    }
     cluster_not_reporting = {
       # The heartbeat's job on this backend: Datadog runs outside the cluster,
       # so it can alert when the cluster stops sending data at all.
