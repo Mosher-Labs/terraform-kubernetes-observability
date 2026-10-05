@@ -728,14 +728,14 @@ locals {
       title     = "systemd service not running"
     }
     scrape_target_down = {
-      # The closest match to Prometheus' `up`: an Agent check (an integration
-      # or an OpenMetrics endpoint) that keeps failing. Needs the Agent setting
-      # integration_check_status_enabled (DD_INTEGRATION_CHECK_STATUS_ENABLED),
-      # because new Agents don't send datadog.agent.check_status by default.
-      # modules/stack turns it on. Without it, this monitor has no data.
+      # Datadog has no generic "a target is down". The Agent's own
+      # datadog.agent.check_status service check would be it, but monitors
+      # can't read it (tested: no data, with the Agent sending it). So this
+      # watches the kubelet's health check, the target every Agent reads. Other
+      # targets alert through their integration's checks (the *_down rules).
       datadog = {
-        query   = "\"datadog.agent.check_status\".over($${tags}).by(\"check\",\"host\").last($${last}).count_by_status()"
-        summary = "The Agent's {{check.name}} check on {{host.name}} has failed for 10 minutes. Alerts that depend on it go quiet."
+        query   = "\"kubernetes.kubelet.check\".over($${tags}).by(\"host\").last($${last}).count_by_status()"
+        summary = "The Agent can't reach the kubelet on {{host.name}}: its health check has failed for 10 minutes. Alerts that depend on it go quiet."
         # A service check's threshold counts consecutive failed runs, not a value. The
         # Agent runs each check every 15 seconds, so 40 is about 10 minutes.
         threshold = 40
