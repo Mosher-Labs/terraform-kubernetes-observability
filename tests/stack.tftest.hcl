@@ -281,6 +281,11 @@ run "datadog_agent_on_k3s_with_control_plane_checks" {
   }
 
   assert {
+    condition     = contains([for e in yamldecode(helm_release.datadog_agent[0].values[0]).datadog.env : "${e.name}=${e.value}"], "DD_INTEGRATION_CHECK_STATUS_ENABLED=true")
+    error_message = "The Agent must send datadog.agent.check_status, which the scrape_target_down monitor reads and new Agents turn off by default."
+  }
+
+  assert {
     condition     = yamldecode(helm_release.datadog_agent[0].values[1]).datadog.criSocketPath == "/run/k3s/containerd/containerd.sock" && !yamldecode(helm_release.datadog_agent[0].values[1]).datadog.kubelet.tlsVerify
     error_message = "k3s should use its own containerd socket and skip kubelet TLS verification."
   }

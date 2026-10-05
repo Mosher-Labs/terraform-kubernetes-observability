@@ -76,6 +76,10 @@ terraform import 'module.datadog_alerts.datadog_integration_slack_channel.this[0
   monitors. Their threshold is the number of consecutive failed check runs; the
   Agent runs each check every 15 seconds, so 8 is about 2 minutes. `window`
   and the backing-service `scope` don't apply to them.
+- `scrape_target_down` reads the Agent's `datadog.agent.check_status` service
+  check, which Agents no longer send by default. Set
+  `DD_INTEGRATION_CHECK_STATUS_ENABLED=true` (`integration_check_status_enabled`)
+  on the Agent. `modules/stack` does. Without it, the monitor has no data.
 - `paused` publishes the monitor as a draft, which sends no notifications.
 - Rules where zero means healthy wrap their metric in `default_zero()`, so a pod
   that no longer exists resolves. No monitor resolves on missing data.
