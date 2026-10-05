@@ -247,7 +247,7 @@ run "apm_backing_and_control_plane_rules" {
   }
 
   assert {
-    condition     = output.monitors["service_error_rate_high"].query == "avg(last_5m):100 * sum:trace.servlet.request.errors{env:prod} by {service}.as_rate() / cutoff_min(sum:trace.servlet.request.hits{env:prod} by {service}.as_rate(), 0.1) > 5"
+    condition     = output.monitors["service_error_rate_high"].query == "avg(last_5m):default_zero(100 * sum:trace.servlet.request.errors{env:prod} by {service}.as_rate() / cutoff_min(sum:trace.servlet.request.hits{env:prod} by {service}.as_rate(), 0.1)) > 5"
     error_message = "APM error rate should read the configured span's trace metrics in the APM scope, floored at min_requests_per_second."
   }
 
@@ -257,7 +257,7 @@ run "apm_backing_and_control_plane_rules" {
   }
 
   assert {
-    condition     = output.monitors["postgres_connections_high"].query == "min(last_10m):100 * max:postgresql.percent_usage_connections{kube_cluster_name:homelab AND kube_namespace:db} by {host} > 70"
+    condition     = output.monitors["postgres_connections_high"].query == "min(last_10m):default_zero(100 * max:postgresql.percent_usage_connections{kube_cluster_name:homelab AND kube_namespace:db} by {host}) > 70"
     error_message = "Backing-service rules should add the backing scope to the cluster tag and use the section's threshold."
   }
 
@@ -267,7 +267,7 @@ run "apm_backing_and_control_plane_rules" {
   }
 
   assert {
-    condition     = output.monitors["apiserver_errors"].query == "avg(last_10m):100 * sum:kube_apiserver.apiserver_request_total.count{code:5* AND kube_cluster_name:homelab}.as_rate() / sum:kube_apiserver.apiserver_request_total.count{kube_cluster_name:homelab}.as_rate() > 5"
+    condition     = output.monitors["apiserver_errors"].query == "avg(last_10m):default_zero(100 * sum:kube_apiserver.apiserver_request_total.count{code:5* AND kube_cluster_name:homelab}.as_rate() / sum:kube_apiserver.apiserver_request_total.count{kube_cluster_name:homelab}.as_rate()) > 5"
     error_message = "apiserver_errors should use the kube_apiserver_metrics check's request counter."
   }
 
@@ -300,7 +300,7 @@ run "cluster_health_rules" {
   }
 
   assert {
-    condition     = output.monitors["node_clock_skew"].query == "min(last_30m):abs(max:ntp.offset{kube_cluster_name:homelab} by {host}) > 0.05"
+    condition     = output.monitors["node_clock_skew"].query == "min(last_30m):default_zero(abs(max:ntp.offset{kube_cluster_name:homelab} by {host})) > 0.05"
     error_message = "node_clock_skew should read the NTP check's offset."
   }
 
@@ -335,5 +335,27 @@ run "service_check_threshold_override" {
   assert {
     condition     = strcontains(output.monitors["scrape_target_down"].query, ".last(21).") && output.monitors["scrape_target_down"].threshold == 20
     error_message = "A service check's threshold override should change how many failed runs it takes."
+  }
+}
+
+run "deleted_objects_resolve" {
+  command = plan
+
+  module {
+    source = "./modules/datadog/catalog"
+  }
+
+  variables {
+    cluster_name = "homelab"
+  }
+
+  assert {
+    condition     = output.monitors["deployment_under_replicated"].query == "min(last_10m):default_zero(max:kubernetes_state.deployment.replicas_desired{kube_cluster_name:homelab} by {kube_namespace,kube_deployment} - max:kubernetes_state.deployment.replicas_available{kube_cluster_name:homelab} by {kube_namespace,kube_deployment}) > 0"
+    error_message = "Rules that alert above a threshold should fill gaps with 0, so a deleted Deployment's alert resolves."
+  }
+
+  assert {
+    condition     = !strcontains(output.monitors["cluster_not_reporting"].query, "default_zero")
+    error_message = "Rules that alert below a threshold must keep their gaps, or a 0 would fire them."
   }
 }
