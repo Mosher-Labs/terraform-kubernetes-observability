@@ -6,7 +6,7 @@ output "monitor_ids" {
 output "monitors" {
   description = "The monitors as created: name, query, threshold, window, severity and group, keyed by rule ID."
   value = {
-    for id, m in module.catalog.monitors : id => {
+    for id, m in module.monitors.monitors : id => {
       group     = m.group
       name      = m.name
       query     = m.query
@@ -19,10 +19,10 @@ output "monitors" {
 
 output "rule_ids" {
   description = "IDs of the monitors that were created, after disabled_rules is applied."
-  value       = module.catalog.rule_ids
+  value       = module.monitors.rule_ids
 }
 
 output "skipped_rules" {
-  description = "modules/alerts catalog rules that have no Datadog monitor, with the reason and what to use instead."
-  value       = module.catalog.skipped_rules
+  description = "Catalog rules that have no Datadog monitor, with the reason and what to use instead."
+  value       = module.monitors.skipped_rules
 }

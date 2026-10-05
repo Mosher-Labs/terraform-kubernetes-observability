@@ -1,7 +1,8 @@
-# The catalog module renders every monitor argument without the Datadog
-# provider, so the root module's tests can check it.
-module "catalog" {
-  source = "./catalog"
+# The monitors module renders every monitor argument without the Datadog
+# provider, so the root module's tests can check it. It reads the rules from
+# modules/catalog.
+module "monitors" {
+  source = "./monitors"
 
   apm                                = var.apm
   backing_services                   = var.backing_services
@@ -19,7 +20,7 @@ module "catalog" {
 }
 
 resource "datadog_monitor" "this" {
-  for_each = module.catalog.monitors
+  for_each = module.monitors.monitors
 
   draft_status        = each.value.draft_status
   include_tags        = true

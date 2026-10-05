@@ -1,4 +1,4 @@
-# These runs use modules/datadog/catalog, which renders every monitor
+# These runs use modules/datadog/monitors, which renders every monitor
 # argument without the Datadog provider. Declaring DataDog/datadog in the
 # root module would make every caller download it.
 mock_provider "grafana" {}
@@ -31,7 +31,7 @@ run "every_catalog_rule_is_mapped_or_skipped" {
   command = plan
 
   module {
-    source = "./modules/datadog/catalog"
+    source = "./modules/datadog/monitors"
   }
 
   variables {
@@ -69,7 +69,7 @@ run "monitors_render_queries_thresholds_and_handles" {
   command = plan
 
   module {
-    source = "./modules/datadog/catalog"
+    source = "./modules/datadog/monitors"
   }
 
   variables {
@@ -153,7 +153,7 @@ run "overrides_scope_and_disabled_rules" {
   command = plan
 
   module {
-    source = "./modules/datadog/catalog"
+    source = "./modules/datadog/monitors"
   }
 
   variables {
@@ -197,7 +197,7 @@ run "unknown_rule_ids_are_rejected" {
   command = plan
 
   module {
-    source = "./modules/datadog/catalog"
+    source = "./modules/datadog/monitors"
   }
 
   variables {
@@ -212,7 +212,7 @@ run "handles_must_start_with_at" {
   command = plan
 
   module {
-    source = "./modules/datadog/catalog"
+    source = "./modules/datadog/monitors"
   }
 
   variables {
@@ -227,7 +227,7 @@ run "apm_backing_and_control_plane_rules" {
   command = plan
 
   module {
-    source = "./modules/datadog/catalog"
+    source = "./modules/datadog/monitors"
   }
 
   variables {
@@ -286,7 +286,7 @@ run "cluster_health_rules" {
   command = plan
 
   module {
-    source = "./modules/datadog/catalog"
+    source = "./modules/datadog/monitors"
   }
 
   variables {
@@ -324,7 +324,7 @@ run "service_check_threshold_override" {
   command = plan
 
   module {
-    source = "./modules/datadog/catalog"
+    source = "./modules/datadog/monitors"
   }
 
   variables {
@@ -342,7 +342,7 @@ run "deleted_objects_resolve" {
   command = plan
 
   module {
-    source = "./modules/datadog/catalog"
+    source = "./modules/datadog/monitors"
   }
 
   variables {

@@ -6,8 +6,11 @@ when your cluster sends metrics to Datadog. It's called on its own, so the root
 module never needs the Datadog provider. `modules/stack`'s `datadog_agent` flag
 installs the Agent it reads from.
 
-Rule IDs, titles, severities and default thresholds match `modules/alerts`, so
-the same `overrides` and `disabled_rules` work on either backend. The `apm`,
+It reads the Datadog side of the catalog in [modules/catalog](../catalog/README.md),
+the same one `modules/alerts` reads. Rule IDs, titles and severities are shared,
+and so are default thresholds, except where a Datadog rule counts something
+else (service checks count failed runs). The same `overrides` and
+`disabled_rules` work on either backend. The `apm`,
 `backing_services` and `control_plane` inputs mirror `modules/alerts`.
 
 ## Usage
@@ -154,7 +157,7 @@ terraform init -backend=false && terraform test
 
 | Name | Source | Version |
 | ---- | ------ | ------- |
-| catalog | ./catalog | n/a |
+| monitors | ./monitors | n/a |
 
 ## Resources
 
@@ -191,5 +194,5 @@ terraform init -backend=false && terraform test
 | monitor\_ids | Datadog monitor IDs, keyed by rule ID. |
 | monitors | The monitors as created: name, query, threshold, window, severity and group, keyed by rule ID. |
 | rule\_ids | IDs of the monitors that were created, after disabled\_rules is applied. |
-| skipped\_rules | modules/alerts catalog rules that have no Datadog monitor, with the reason and what to use instead. |
+| skipped\_rules | Catalog rules that have no Datadog monitor, with the reason and what to use instead. |
 <!-- END_TF_DOCS -->

@@ -27,7 +27,7 @@ output "monitors" {
 
 output "mapped_rule_ids" {
   description = "Every rule this module can create a monitor for, whether or not it's enabled."
-  value       = sort(keys(local.all_rules))
+  value       = module.catalog.known_rule_ids
 }
 
 output "rule_ids" {
@@ -36,6 +36,6 @@ output "rule_ids" {
 }
 
 output "skipped_rules" {
-  description = "modules/alerts catalog rules that have no Datadog monitor, with the reason and what to use instead."
-  value       = local.skipped_rules
+  description = "Catalog rules that have no Datadog monitor, with the reason and what to use instead."
+  value       = module.catalog.skipped_rules
 }
