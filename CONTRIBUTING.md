@@ -17,6 +17,7 @@ terraform init -backend=false
 ```bash
 pre-commit run --all-files
 terraform test
+terraform -chdir=modules/datadog test   # after terraform -chdir=modules/datadog init -backend=false
 ```
 
 `pre-commit` formats Terraform, runs tflint, regenerates the input and output
@@ -39,7 +40,7 @@ the Grafana provider, so they run without Grafana or credentials.
    resolves when the problem stops.
 4. Update the catalog table in README.md and the rule counts in
    `tests/alerts.tftest.hcl`, `tests/catalog.tftest.hcl` and
-   `tests/datadog.tftest.hcl`. A test fails when a rule lacks a block or a skip
+   `modules/datadog/tests/rendering.tftest.hcl`. A test fails when a rule lacks a block or a skip
    reason for either backend.
 
 Rule IDs are part of the module's interface: callers use them in `overrides`

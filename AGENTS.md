@@ -23,6 +23,7 @@ Grafana rules and `modules/datadog` as Datadog monitors. Tests in `tests/` use
   ```bash
   pre-commit run --all-files
   terraform init -backend=false && terraform test
+  terraform -chdir=modules/datadog init -backend=false && terraform -chdir=modules/datadog test
   ```
 
 - **Test every behavior change** in `tests/`. Never point tests at a real

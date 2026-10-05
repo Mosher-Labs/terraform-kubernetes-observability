@@ -1,5 +1,6 @@
 # Run from modules/datadog: terraform init -backend=false && terraform test.
-# The root tests cover the catalog; this checks the monitor resource mapping.
+# This checks the monitor resource mapping. rendering.tftest.hcl checks the
+# arguments, and the root tests cover the catalog.
 mock_provider "datadog" {}
 
 run "monitors_map_the_catalog" {

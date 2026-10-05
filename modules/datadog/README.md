@@ -128,9 +128,9 @@ These rules have no monitor here:
 
 ## Development
 
-`modules/datadog/catalog` renders every monitor argument without the Datadog
-provider, and the root module's tests check it. `tests/` here checks the
-monitor and notification resources:
+The tests here mock the Datadog provider, so they need no Datadog account. They
+check the monitor arguments (queries, thresholds, messages, tags) and the
+notification resources. The catalog's own tests are in the root `tests/`:
 
 ```bash
 cd modules/datadog
@@ -157,7 +157,7 @@ terraform init -backend=false && terraform test
 
 | Name | Source | Version |
 | ---- | ------ | ------- |
-| monitors | ./monitors | n/a |
+| catalog | ../catalog | n/a |
 
 ## Resources
 
