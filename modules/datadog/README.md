@@ -104,6 +104,7 @@ terraform import 'module.datadog_alerts.datadog_integration_slack_channel.this[0
 | `node_systemd_service_failed` | The `systemd.unit.state` service check, which goes critical for any state but running. Needs the Agent's systemd check, which is off by default. |
 | `scrape_target_down` | The `kubernetes.kubelet.check` service check, per host |
 | `agent_not_reporting` | The `datadog.agent.up` service check, per host, with no-data notification after 10 minutes |
+| `x509_certificate_expiring_critical`, `x509_certificate_expiring_warning` | `x509.cert_expires_in_seconds`, from an Agent OpenMetrics check on x509-certificate-exporter. Needs [that setup](#x509-certificate-exporter); without it they have no data and stay quiet. |
 | `apiserver_errors`, `apiserver_client_certificate_expiring`, `etcd_no_leader` | The kube_apiserver_metrics and etcd checks. Off until `control_plane` turns them on. |
 | APM | `trace.<span_name>.hits`, `.errors` and the `trace.<span_name>` latency distribution, by `service` (and `resource_name` per endpoint) |
 | Postgres, MySQL, MongoDB, Redis | `postgresql.*`, `mysql.*`, `mongodb.*`, `redis.*`, and each integration's `can_connect` service check |
@@ -116,7 +117,6 @@ These rules have no monitor here:
 | `notification_delivery_failing` | Watches Grafana's notification pipeline. |
 | `prometheus_config_reload_failed`, `prometheus_not_ingesting`, `prometheus_rule_failures` | Prometheus' own health. This backend has no Prometheus; `cluster_not_reporting` catches the Agent going quiet. |
 | `synthetic_check_failing`, `synthetic_check_slow`, `tls_certificate_expiring_critical`, `tls_certificate_expiring_warning` | Datadog Synthetics, tracked in an issue. |
-| `x509_certificate_expiring_critical`, `x509_certificate_expiring_warning` | They read x509-certificate-exporter, which needs an Agent OpenMetrics check that isn't set up. Tracked in an issue. |
 
 ### Known differences from the Grafana backend
 
@@ -139,6 +139,52 @@ These rules have no monitor here:
   certificate that expires within 7 days, so its threshold is a request count
   (0), not seconds.
 - `kubelet_certificate_expiring` reads the client certificate's TTL only.
+- `x509_certificate_expiring_critical` and `_warning` have their thresholds in
+  seconds (604800 and 2592000), where Grafana's are in days. A Datadog query
+  can't subtract `time()`, so they read the exporter's relative metric. They
+  match by `filepath` and `subject_cn`, like Grafana's `filepath` and
+  `subject_CN`.
+
+### x509-certificate-exporter
+
+The two certificate rules need `x509.cert_expires_in_seconds`, which the Agent
+doesn't collect on its own. `modules/stack` doesn't install
+x509-certificate-exporter, so this is a step on your side:
+
+1. Install the exporter with `exposeRelativeMetrics: true`. That adds
+   `x509_cert_expires_in_seconds` next to `x509_cert_not_after`.
+2. Have the Agent scrape it with an OpenMetrics check. With Autodiscovery, put
+   this annotation on the exporter's pods (the chart's
+   `hostPathsExporter.podAnnotations`), so the Agent on each node scrapes the
+   exporter pod on its own node. The container is named
+   `x509-certificate-exporter`:
+
+   ```yaml
+   ad.datadoghq.com/x509-certificate-exporter.checks: |
+     {
+       "openmetrics": {
+         "instances": [
+           {
+             "openmetrics_endpoint": "http://%%host%%:9793/metrics",
+             "namespace": "x509",
+             "metrics": [
+               {
+                 "x509_cert_expires_in_seconds":
+                   "cert_expires_in_seconds"
+               }
+             ]
+           }
+         ]
+       }
+     }
+   ```
+
+   `namespace` and the rename make the metric `x509.cert_expires_in_seconds`,
+   which is what the monitors query. Without the rename, the Agent names it
+   `x509.x509_cert_expires_in_seconds`.
+
+The labels become tags: `filepath` and `subject_cn` (Datadog lowercases tag
+names). Each monitor alerts per certificate file.
 
 ## Development
 
