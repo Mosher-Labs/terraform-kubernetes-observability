@@ -729,7 +729,10 @@ locals {
     }
     scrape_target_down = {
       # The closest match to Prometheus' `up`: an Agent check (an integration
-      # or an OpenMetrics endpoint) that keeps failing.
+      # or an OpenMetrics endpoint) that keeps failing. Needs the Agent setting
+      # integration_check_status_enabled (DD_INTEGRATION_CHECK_STATUS_ENABLED),
+      # because new Agents don't send datadog.agent.check_status by default.
+      # modules/stack turns it on. Without it, this monitor has no data.
       datadog = {
         query   = "\"datadog.agent.check_status\".over($${tags}).by(\"check\",\"host\").last($${last}).count_by_status()"
         summary = "The Agent's {{check.name}} check on {{host.name}} has failed for 10 minutes. Alerts that depend on it go quiet."

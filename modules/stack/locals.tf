@@ -335,7 +335,10 @@ locals {
           socketEnabled = var.datadog_agent.apm
         }
         # modules/datadog scopes its monitors to this, as kube_cluster_name.
-        clusterName          = var.cluster_name
+        clusterName = var.cluster_name
+        # The scrape_target_down monitor reads the Agent's check_status service
+        # check, which new Agents turn off by default.
+        env                  = [{ name = "DD_INTEGRATION_CHECK_STATUS_ENABLED", value = "true" }]
         kubeStateMetricsCore = { enabled = true }
         logs = {
           containerCollectAll = var.datadog_agent.logs
