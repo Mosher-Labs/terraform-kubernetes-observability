@@ -17,6 +17,7 @@ terraform init -backend=false
 ```bash
 pre-commit run --all-files
 terraform test
+terraform -chdir=modules/datadog test   # after terraform -chdir=modules/datadog init -backend=false
 ```
 
 `pre-commit` formats Terraform, runs tflint, regenerates the input and output
@@ -25,16 +26,22 @@ the Grafana provider, so they run without Grafana or credentials.
 
 ## Adding or changing an alert
 
-1. Edit `modules/alerts/catalog.tf`. Write the query to return the value to
-   compare, one series per thing being alerted on, and put the threshold in
-   `threshold`, not in the PromQL. A query that returns nothing counts as
-   healthy.
-2. Workload rules take the namespace selector through the `__SEL__`
-   placeholder. Node and control-plane rules don't.
+1. Edit the catalog in `modules/catalog` (`catalog.tf`, `catalog_apm.tf` or
+   `catalog_backing.tf`). Each rule is written once: shared fields (`group`,
+   `operator`, `severity`, `threshold`, `title`) and a block for each backend,
+   `grafana` and `datadog`. Write each query to return the value to compare,
+   one series per thing being alerted on, and put the threshold in
+   `threshold`, not in the query. A query that returns nothing counts as
+   healthy. A backend that can't express the rule gets `skip = "reason"`.
+2. Workload rules set `workload = true`, and take the namespace selector
+   through the `$${sel}` template variable in the Grafana block. Node and
+   control-plane rules don't.
 3. Prefer `increase()` or `rate()` over a window to raw counters, so the alert
    resolves when the problem stops.
 4. Update the catalog table in README.md and the rule counts in
-   `tests/alerts.tftest.hcl`.
+   `tests/alerts.tftest.hcl`, `tests/catalog.tftest.hcl` and
+   `modules/datadog/tests/rendering.tftest.hcl`. A test fails when a rule lacks a block or a skip
+   reason for either backend.
 
 Rule IDs are part of the module's interface: callers use them in `overrides`
 and `disabled_rules`. Renaming or removing one is a breaking change.

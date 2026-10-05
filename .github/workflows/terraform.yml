@@ -13,7 +13,7 @@ permissions: read-all
 
 jobs:
   terraform:
-    uses: "Mosher-Labs/.github/.github/workflows/terraform-module.yml@39dc1e003e0c99ee009eecca4773bb6aa4935ce2"  # v0.11.1
+    uses: "Mosher-Labs/.github/.github/workflows/terraform-module.yml@3915b3040bd9335819629478bc809511bc014c67"  # v0.12.0
     permissions:
       contents: read
     with:
@@ -21,3 +21,7 @@ jobs:
       # newest we use. The tests mock the Grafana provider, so they need no
       # Grafana and no credentials.
       terraform_versions: '["1.15.8", "1.16.4"]'
+      # modules/datadog needs the Datadog provider, which the root doesn't
+      # require, so its tests run from its own directory, with the provider
+      # mocked.
+      test_directories: '["modules/datadog"]'

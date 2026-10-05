@@ -37,7 +37,9 @@ managed Prometheus, or Grafana Cloud.
   collector.
 - **A Datadog backend**, `modules/datadog`: the same catalog as Datadog
   monitors, for clusters that send metrics to Datadog instead of Prometheus.
-- **Submodules you can use on their own:** `modules/alerts`,
+- **One catalog for every backend**, `modules/catalog`: each rule is written
+  once, with a block for Grafana and one for Datadog.
+- **Submodules you can use on their own:** `modules/alerts`, `modules/catalog`,
   `modules/dashboards`, `modules/datadog`, `modules/notifications` and
   `modules/stack`.
 
@@ -295,6 +297,92 @@ alerts when the cluster stops sending data. The control-plane rules are off
 until `control_plane` turns them on. See
 [modules/datadog](modules/datadog/README.md) for the mapping and the known
 differences, and [examples/datadog](examples/datadog).
+
+## How the catalog is organised
+
+`modules/catalog` holds every rule once. It has no providers and creates
+nothing: given `catalog = "grafana"` or `catalog = "datadog"`, it outputs the
+rules for that backend. `modules/alerts` turns the Grafana rules into rule
+groups, and `modules/datadog` turns the Datadog rules into monitors. Callers
+of those two modules see no difference.
+
+A rule has fields every backend shares, and a block for each backend:
+
+```hcl
+pod_crash_looping = {
+  datadog = {
+    query               = "sum($${window}):default_zero(diff(max:kubernetes_state.container.restarts{$${scope}} by {kube_namespace,pod_name,kube_container_name}))"
+    require_full_window = false
+    summary             = "{{kube_namespace.name}}/{{pod_name.name}} ({{kube_container_name.name}}) restarted {{value}} times in 15 minutes."
+    window              = "last_15m"
+  }
+  grafana = {
+    expr           = "sum by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total$${sel}[15m]))"
+    pending_period = "1m"
+    subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
+    summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) restarted more than 5 times in 15 minutes."
+  }
+  group     = "pods"
+  operator  = "gt"
+  severity  = "critical"
+  threshold = 5
+  title     = "Pod crash looping"
+  workload  = true
+}
+
+# A backend that can't express a rule says why instead of giving a query.
+synthetic_check_failing = {
+  datadog = { skip = "Datadog Synthetics, tracked in an issue." }
+  grafana = { expr = "...", pending_period = "2m", subject = "...", summary = "..." }
+  # shared fields ...
+}
+```
+
+- Shared fields: `group`, `operator`, `severity`, `threshold` and `title` are
+  required. `requires` names what turns a rule on (`apiserver`, `etcd`, `apm` or
+  a backing service), and `workload = true` marks a rule the workload scope
+  applies to.
+- A backend block may replace a shared field where that backend needs
+  different semantics. A Datadog service check's threshold counts failed check
+  runs, for example. Each replacement has a comment saying why, and
+  `tests/catalog.tftest.hcl` lists them all.
+- Queries are templates. A rule writes `$${sel}` or `$${scope}` (the doubled `$`
+  is HCL's escape), and the catalog fills them in from its inputs with
+  `templatestring()`, so a rule's query comes out ready to use. The variables
+  are listed in `modules/catalog/locals.tf`. A Datadog query stops before its
+  comparison, which `modules/datadog` adds.
+- `disabled_rules`, `overrides` and the `apm`, `backing_services` and
+  `control_plane` flags work the same for both. `custom_rules` stays in
+  `modules/alerts`, because it takes native queries.
+
+### Adding a rule
+
+1. Add the rule to `modules/catalog/catalog.tf`, `catalog_apm.tf` or
+   `catalog_backing.tf`, with its shared fields and a block for each backend.
+2. Give a backend that can't express it `skip = "reason"` in place of a query.
+   `terraform test` fails, and so does a plan that reads the catalog, when a
+   rule has neither a block nor a skip reason for either backend.
+3. Update the catalog table above and the rule counts in `tests/`.
+
+### Using the catalog on its own
+
+Call `modules/catalog` to get the rendered rules for your own renderer, such as
+PrometheusRule objects or another monitoring tool:
+
+```hcl
+module "catalog" {
+  source = "github.com/Mosher-Labs/terraform-kubernetes-observability//modules/catalog?ref=<commit-sha>"  # vX.Y.Z
+
+  catalog       = "datadog"
+  cluster_scope = "kube_cluster_name:prod"
+}
+
+# module.catalog.rules is { rule_id = { title, severity, threshold, query, summary, ... } }
+# module.catalog.skipped_rules is { rule_id = "reason" }
+```
+
+See [modules/catalog](modules/catalog/README.md) for the fields each backend
+returns.
 
 ## Cluster types
 

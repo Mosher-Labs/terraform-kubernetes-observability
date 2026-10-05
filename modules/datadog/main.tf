@@ -1,25 +1,22 @@
-# The catalog module renders every monitor argument without the Datadog
-# provider, so the root module's tests can check it.
+# The catalog holds every rule once for both backends. This module takes the
+# Datadog rules from it and creates one monitor for each.
 module "catalog" {
-  source = "./catalog"
+  source = "../catalog"
 
-  apm                                = var.apm
-  backing_services                   = var.backing_services
-  cluster_name                       = var.cluster_name
-  cluster_tag                        = var.cluster_tag
-  control_plane                      = var.control_plane
-  disabled_rules                     = var.disabled_rules
-  metric_notification_handles        = local.metric_handles
-  notification_handles               = local.handles
-  overrides                          = var.overrides
-  renotify_interval_minutes          = var.renotify_interval_minutes
-  service_check_notification_handles = local.service_check_handles
-  tags                               = var.tags
-  workload_scope                     = var.workload_scope
+  apm              = var.apm
+  backing_services = var.backing_services
+  catalog          = "datadog"
+  cluster_scope    = local.cluster_scope
+  control_plane    = var.control_plane
+  disabled_rules   = var.disabled_rules
+  overrides        = var.overrides
+  # The monitors below check the IDs, so the error comes from them.
+  validate_rule_ids = false
+  workload_scope    = var.workload_scope
 }
 
 resource "datadog_monitor" "this" {
-  for_each = module.catalog.monitors
+  for_each = local.monitors
 
   draft_status        = each.value.draft_status
   include_tags        = true
@@ -38,5 +35,12 @@ resource "datadog_monitor" "this" {
   monitor_thresholds {
     critical = each.value.threshold
     ok       = each.value.type == "service check" ? 1 : null
+  }
+
+  lifecycle {
+    precondition {
+      condition     = length(local.unknown_ids) == 0
+      error_message = "Unknown rule IDs in disabled_rules or overrides: ${join(", ", local.unknown_ids)}."
+    }
   }
 }

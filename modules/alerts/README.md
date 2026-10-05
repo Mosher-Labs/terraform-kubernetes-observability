@@ -1,7 +1,8 @@
 # alerts
 
-Creates a Grafana folder and alert rule groups from the catalog in
-`catalog.tf`. The root README lists every rule with its defaults.
+Creates a Grafana folder and alert rule groups from the Grafana side of the
+catalog in [modules/catalog](../catalog/README.md). The root README lists every
+rule with its defaults.
 
 Use it on its own when you only want the alert rules, for example because your
 contact points and notification policies are managed elsewhere. Route the
@@ -41,6 +42,12 @@ module "alerts" {
 | Name | Version |
 | ---- | ------- |
 | grafana | >= 4.0.0, < 5.0.0 |
+
+## Modules
+
+| Name | Source | Version |
+| ---- | ------ | ------- |
+| catalog | ../catalog | n/a |
 
 ## Resources
 

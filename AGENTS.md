@@ -10,8 +10,9 @@ A Terraform module that creates Kubernetes alerting in Grafana. The root module
 wires together `modules/alerts` and `modules/notifications`. `modules/stack`
 installs the monitoring stack with Helm and is called on its own, so the root
 module never needs a Helm provider. The alert catalog lives in
-`modules/alerts/catalog.tf`. Tests in `tests/` use `terraform test` with a
-mocked Grafana provider.
+`modules/catalog`, once for every backend: `modules/alerts` renders it as
+Grafana rules and `modules/datadog` as Datadog monitors. Tests in `tests/` use
+`terraform test` with a mocked Grafana provider.
 
 ## Rules
 
@@ -22,13 +23,18 @@ mocked Grafana provider.
   ```bash
   pre-commit run --all-files
   terraform init -backend=false && terraform test
+  terraform -chdir=modules/datadog init -backend=false && terraform -chdir=modules/datadog test
   ```
 
 - **Test every behavior change** in `tests/`. Never point tests at a real
   Grafana.
-- **Catalog changes:** keep the threshold out of the PromQL (no data counts as
-  healthy), use `__SEL__` for the workload selector on workload rules only, and
-  update the catalog table in README.md and the rule counts in the tests.
+- **Catalog changes:** edit `modules/catalog` only. Define each rule once, with
+  a `grafana` and a `datadog` block, or `skip = "reason"` for a backend that
+  can't express it. Keep the threshold out of the query (no data counts as
+  healthy), use `${sel}` for the workload selector on workload rules only, and
+  update the catalog table in README.md and the rule counts in the tests. A
+  backend block that replaces a shared field needs a comment saying why, and an
+  entry in `tests/catalog.tftest.hcl`.
   Changing a rule ID is a breaking change, because callers reference IDs in
   `overrides` and `disabled_rules`.
 - **Avoid cumulative-counter thresholds.** Alert on `increase()` or `rate()`
