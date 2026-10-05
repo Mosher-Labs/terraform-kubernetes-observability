@@ -202,7 +202,7 @@ run "rules_render_per_backend" {
   }
 
   assert {
-    condition     = run.datadog.rules.scrape_target_down.threshold == 40 && run.datadog.rules.scrape_target_down.query == "\"datadog.agent.check_status\".over(\"kube_cluster_name:homelab\").by(\"check\",\"host\").last(41).count_by_status()"
+    condition     = run.datadog.rules.scrape_target_down.threshold == 40 && run.datadog.rules.scrape_target_down.query == "\"kubernetes.kubelet.check\".over(\"kube_cluster_name:homelab\").by(\"host\").last(41).count_by_status()"
     error_message = "A service check's threshold counts failed runs, and its query looks back one run further."
   }
 

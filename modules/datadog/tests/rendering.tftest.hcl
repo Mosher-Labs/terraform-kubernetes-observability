@@ -78,8 +78,8 @@ run "monitors_render_queries_thresholds_and_handles" {
   }
 
   assert {
-    condition     = local.monitors["scrape_target_down"].type == "service check" && local.monitors["scrape_target_down"].query == "\"datadog.agent.check_status\".over(\"kube_cluster_name:homelab\").by(\"check\",\"host\").last(41).count_by_status()" && local.monitors["scrape_target_down"].threshold == 40
-    error_message = "scrape_target_down should be a service check on the Agent's check status, alerting after 40 failed runs."
+    condition     = local.monitors["scrape_target_down"].type == "service check" && local.monitors["scrape_target_down"].query == "\"kubernetes.kubelet.check\".over(\"kube_cluster_name:homelab\").by(\"host\").last(41).count_by_status()" && local.monitors["scrape_target_down"].threshold == 40
+    error_message = "scrape_target_down should be a service check on the kubelet's health, alerting after 40 failed runs."
   }
 
   assert {

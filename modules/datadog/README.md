@@ -76,10 +76,11 @@ terraform import 'module.datadog_alerts.datadog_integration_slack_channel.this[0
   monitors. Their threshold is the number of consecutive failed check runs; the
   Agent runs each check every 15 seconds, so 8 is about 2 minutes. `window`
   and the backing-service `scope` don't apply to them.
-- `scrape_target_down` reads the Agent's `datadog.agent.check_status` service
-  check, which Agents no longer send by default. Set
-  `DD_INTEGRATION_CHECK_STATUS_ENABLED=true` (`integration_check_status_enabled`)
-  on the Agent. `modules/stack` does. Without it, the monitor has no data.
+- `scrape_target_down` watches the kubelet's health check, `kubernetes.kubelet.check`,
+  per node. Datadog has no generic "a target is down": the Agent's
+  `datadog.agent.check_status` service check would be it, but monitors can't read
+  it. Other targets alert through their integration's checks, such as the
+  `*_down` rules.
 - `paused` publishes the monitor as a draft, which sends no notifications.
 - Rules where zero means healthy wrap their metric in `default_zero()`, so a pod
   that no longer exists resolves. No monitor resolves on missing data.
@@ -94,7 +95,7 @@ terraform import 'module.datadog_alerts.datadog_integration_slack_channel.this[0
 | Nodes | `system.*` host metrics (disk, inodes, memory, network) and `kubernetes_state.node.*` |
 | `node_clock_skew`, `node_clock_not_synchronising` | The Agent's NTP check: `ntp.offset`, and the `ntp.in_sync` service check |
 | `node_systemd_service_failed` | The `systemd.unit.state` service check, which goes critical for any state but running. Needs the Agent's systemd check, which is off by default. |
-| `scrape_target_down` | The `datadog.agent.check_status` service check, per check and host |
+| `scrape_target_down` | The `kubernetes.kubelet.check` service check, per host |
 | `apiserver_errors`, `apiserver_client_certificate_expiring`, `etcd_no_leader` | The kube_apiserver_metrics and etcd checks. Off until `control_plane` turns them on. |
 | APM | `trace.<span_name>.hits`, `.errors` and the `trace.<span_name>` latency distribution, by `service` (and `resource_name` per endpoint) |
 | Postgres, MySQL, MongoDB, Redis | `postgresql.*`, `mysql.*`, `mongodb.*`, `redis.*`, and each integration's `can_connect` service check |
