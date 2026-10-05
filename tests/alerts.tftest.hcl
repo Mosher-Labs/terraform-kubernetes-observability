@@ -27,8 +27,8 @@ run "k3s_has_apiserver_but_not_etcd" {
   }
 
   assert {
-    condition     = length(output.rule_ids) == 30
-    error_message = "Expected the 29 workload, node, synthetic and alerting rules plus apiserver_errors."
+    condition     = length(output.rule_ids) == 45
+    error_message = "Expected the 43 workload, node, synthetic and alerting rules plus the two apiserver rules."
   }
 }
 
@@ -62,7 +62,7 @@ run "generic_includes_all_rules" {
   }
 
   assert {
-    condition     = length(output.rule_ids) == 31
+    condition     = length(output.rule_ids) == 46
     error_message = "A generic cluster should get every catalog rule."
   }
 }

@@ -35,6 +35,30 @@ resource "helm_release" "blackbox_exporter" {
   version          = var.blackbox_exporter.chart_version
 }
 
+resource "helm_release" "datadog_agent" {
+  count = var.datadog_agent.enabled ? 1 : 0
+
+  chart            = "datadog"
+  create_namespace = var.create_namespace
+  name             = var.datadog_agent.release_name
+  namespace        = var.namespace
+  repository       = "https://helm.datadoghq.com"
+  # The API key, only when no existing Secret is named.
+  set_sensitive = var.datadog_agent.api_key_secret_name == null && var.datadog_api_key != null ? [{ name = "datadog.apiKey", value = var.datadog_api_key }] : null
+  timeout       = var.timeout_seconds
+  # Helm merges these in order: the module's base, the cluster type's, the
+  # control-plane checks', then the caller's.
+  values  = concat([local.datadog_values, local.datadog_cluster_values[var.cluster_type], local.datadog_control_plane_values], var.datadog_agent.values)
+  version = var.datadog_agent.chart_version
+
+  lifecycle {
+    precondition {
+      condition     = var.datadog_agent.api_key_secret_name != null || nonsensitive(var.datadog_api_key != null)
+      error_message = "datadog_agent needs api_key_secret_name, or datadog_api_key."
+    }
+  }
+}
+
 resource "helm_release" "kube_prometheus_stack" {
   count = var.kube_prometheus_stack.enabled ? 1 : 0
 

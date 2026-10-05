@@ -19,6 +19,7 @@ output "installed" {
   value = compact([
     var.alloy.enabled ? "alloy" : "",
     var.blackbox_exporter.enabled ? "blackbox_exporter" : "",
+    var.datadog_agent.enabled ? "datadog_agent" : "",
     var.kube_prometheus_stack.enabled ? "kube_prometheus_stack" : "",
     var.loki.enabled ? "loki" : "",
     var.opentelemetry.enabled ? "opentelemetry" : "",

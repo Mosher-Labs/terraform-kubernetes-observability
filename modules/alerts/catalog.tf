@@ -56,6 +56,19 @@ locals {
       threshold      = 0
       title          = "Pod cannot start"
     }
+    pod_not_ready = {
+      # Running pods only: completed Job pods are never Ready, and pending or
+      # failing-to-start pods have their own rules.
+      expr           = "max by (namespace, pod) (kube_pod_status_ready{condition=\"false\",__SEL__}) * on (namespace, pod) max by (namespace, pod) (kube_pod_status_phase{phase=\"Running\",__SEL__})"
+      group          = "pods"
+      operator       = "gt"
+      pending_period = "15m"
+      severity       = "warning"
+      subject        = "{{ $labels.pod }} in {{ $labels.namespace }}"
+      summary        = "{{ $labels.namespace }}/{{ $labels.pod }} is running but has failed its readiness check for 15 minutes, so it gets no traffic."
+      threshold      = 0
+      title          = "Pod not ready"
+    }
 
     # ── Workloads ─────────────────────────────────────────────────────────
     daemonset_not_ready = {
@@ -112,6 +125,28 @@ locals {
       summary        = "{{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler }} has run at its maximum replicas for 30 minutes and can't scale further."
       threshold      = 0.999
       title          = "HPA pinned at max replicas"
+    }
+    job_failed = {
+      expr           = "max by (namespace, job_name) (kube_job_failed{condition=\"true\",__SEL__})"
+      group          = "workloads"
+      operator       = "gt"
+      pending_period = "0s"
+      severity       = "warning"
+      subject        = "{{ $labels.job_name }} in {{ $labels.namespace }}"
+      summary        = "Job {{ $labels.namespace }}/{{ $labels.job_name }} failed. Check its pods' logs; it stays failed until the Job is deleted or rerun."
+      threshold      = 0
+      title          = "Job failed"
+    }
+    job_not_completed = {
+      expr           = "max by (namespace, job_name) (time() - kube_job_status_start_time{__SEL__} and on (namespace, job_name) kube_job_status_active{__SEL__} > 0)"
+      group          = "workloads"
+      operator       = "gt"
+      pending_period = "0s"
+      severity       = "warning"
+      subject        = "{{ $labels.job_name }} in {{ $labels.namespace }}"
+      summary        = "Job {{ $labels.namespace }}/{{ $labels.job_name }} has been running for {{ humanizeDuration $values.A.Value }}. It may be stuck."
+      threshold      = 43200
+      title          = "Job running too long"
     }
     statefulset_under_replicated = {
       expr           = "max by (namespace, statefulset) (kube_statefulset_replicas{__SEL__} - kube_statefulset_status_replicas_ready{__SEL__})"
@@ -194,6 +229,17 @@ locals {
       threshold      = 80
       title          = "Container memory near limit"
     }
+    persistent_volume_errors = {
+      expr           = "max by (persistentvolume, phase) (kube_persistentvolume_status_phase{phase=~\"Failed|Pending\"})"
+      group          = "resources"
+      operator       = "gt"
+      pending_period = "5m"
+      severity       = "critical"
+      subject        = "{{ $labels.persistentvolume }} ({{ $labels.phase }})"
+      summary        = "PersistentVolume {{ $labels.persistentvolume }} has been {{ $labels.phase }} for 5 minutes. Pods that use it can't start."
+      threshold      = 0
+      title          = "PersistentVolume failed"
+    }
     pvc_near_full_critical = {
       expr           = "100 * max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_used_bytes{__SEL__} / kubelet_volume_stats_capacity_bytes{__SEL__})"
       group          = "resources"
@@ -216,6 +262,17 @@ locals {
       threshold      = 80
       title          = "PersistentVolumeClaim almost full"
     }
+    pvc_inodes_near_full = {
+      expr           = "max by (namespace, persistentvolumeclaim) (100 * kubelet_volume_stats_inodes_used{__SEL__} / kubelet_volume_stats_inodes{__SEL__})"
+      group          = "resources"
+      operator       = "gt"
+      pending_period = "10m"
+      severity       = "warning"
+      subject        = "{{ $labels.persistentvolumeclaim }} in {{ $labels.namespace }}"
+      summary        = "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} has used {{ humanize $values.A.Value }}% of its inodes. New files fail at 100% even with free space."
+      threshold      = 90
+      title          = "PVC running out of inodes"
+    }
 
     # ── Nodes ─────────────────────────────────────────────────────────────
     node_disk_full = {
@@ -228,6 +285,52 @@ locals {
       summary        = "{{ $labels.mountpoint }} on {{ $labels.instance }} is {{ humanize $values.A.Value }}% full."
       threshold      = 85
       title          = "Node disk almost full"
+    }
+    node_clock_skew = {
+      expr           = "max by (instance) (abs(node_timex_offset_seconds))"
+      group          = "nodes"
+      operator       = "gt"
+      pending_period = "10m"
+      severity       = "warning"
+      subject        = "{{ $labels.instance }}"
+      summary        = "{{ $labels.instance }}'s clock is {{ humanize $values.A.Value }}s off. Skew breaks TLS, tokens and log ordering; check NTP."
+      threshold      = 0.05
+      title          = "Node clock skewed"
+    }
+    node_clock_not_synchronising = {
+      expr           = "min by (instance) (node_timex_sync_status)"
+      group          = "nodes"
+      operator       = "lt"
+      pending_period = "10m"
+      severity       = "warning"
+      subject        = "{{ $labels.instance }}"
+      summary        = "{{ $labels.instance }} isn't synchronising its clock with NTP."
+      threshold      = 1
+      title          = "Node clock not synchronising"
+    }
+    node_inodes_low = {
+      expr           = "max by (instance, mountpoint) (100 * (1 - node_filesystem_files_free{fstype!~\"tmpfs|overlay|squashfs|nsfs|ramfs\"} / (node_filesystem_files{fstype!~\"tmpfs|overlay|squashfs|nsfs|ramfs\"} > 0)))"
+      group          = "nodes"
+      operator       = "gt"
+      pending_period = "10m"
+      severity       = "warning"
+      subject        = "{{ $labels.instance }} {{ $labels.mountpoint }}"
+      summary        = "{{ $labels.mountpoint }} on {{ $labels.instance }} has used {{ humanize $values.A.Value }}% of its inodes. New files fail at 100% even with free space."
+      threshold      = 90
+      title          = "Node running out of inodes"
+    }
+    kubelet_certificate_expiring = {
+      # Needs the kubelet's certificate manager metrics. k3s doesn't expose
+      # them, so there this rule has no data and stays quiet.
+      expr           = "min by (node) (kubelet_certificate_manager_client_ttl_seconds or kubelet_certificate_manager_server_ttl_seconds)"
+      group          = "nodes"
+      operator       = "lt"
+      pending_period = "15m"
+      severity       = "warning"
+      subject        = "{{ $labels.node }}"
+      summary        = "A kubelet certificate on {{ $labels.node }} expires in {{ humanizeDuration $values.A.Value }}."
+      threshold      = 604800
+      title          = "Kubelet certificate expiring"
     }
     node_memory_high = {
       expr           = "100 * max by (instance) (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)"
@@ -262,6 +365,17 @@ locals {
       threshold      = 0
       title          = "Node not ready"
     }
+    node_readiness_flapping = {
+      expr           = "sum by (node) (changes(kube_node_status_condition{condition=\"Ready\",status=\"true\"}[15m]))"
+      group          = "nodes"
+      operator       = "gt"
+      pending_period = "0s"
+      severity       = "warning"
+      subject        = "{{ $labels.node }}"
+      summary        = "Node {{ $labels.node }} changed Ready state {{ humanize $values.A.Value }} times in 15 minutes. Check its network and kubelet."
+      threshold      = 2
+      title          = "Node readiness flapping"
+    }
     node_pressure = {
       expr           = "max by (node, condition) (kube_node_status_condition{condition=~\"MemoryPressure|DiskPressure|PIDPressure\",status=\"true\"})"
       group          = "nodes"
@@ -272,6 +386,19 @@ locals {
       summary        = "Node {{ $labels.node }} reports {{ $labels.condition }}. The kubelet may start evicting pods."
       threshold      = 0
       title          = "Node under resource pressure"
+    }
+    node_systemd_service_failed = {
+      # Needs node-exporter's systemd collector (--collector.systemd), which
+      # is off by default. Without it this rule has no data and stays quiet.
+      expr           = "max by (instance, name) (node_systemd_unit_state{state=\"failed\"})"
+      group          = "nodes"
+      operator       = "gt"
+      pending_period = "5m"
+      severity       = "warning"
+      subject        = "{{ $labels.name }} on {{ $labels.instance }}"
+      summary        = "systemd unit {{ $labels.name }} on {{ $labels.instance }} has failed."
+      threshold      = 0
+      title          = "systemd service failed"
     }
     scrape_target_down = {
       expr           = "min by (job, namespace, instance) (up)"
@@ -347,6 +474,41 @@ locals {
       threshold      = 0
       title          = "Notification delivery failing"
     }
+    # Prometheus health. The heartbeat queries vector(1), which still works
+    # when Prometheus stops ingesting, so these catch what it can't.
+    prometheus_config_reload_failed = {
+      expr           = "min by (instance) (prometheus_config_last_reload_successful)"
+      group          = "alerting"
+      operator       = "lt"
+      pending_period = "10m"
+      severity       = "critical"
+      subject        = "{{ $labels.instance }}"
+      summary        = "Prometheus {{ $labels.instance }} failed to reload its configuration and is running the previous one."
+      threshold      = 1
+      title          = "Prometheus config reload failed"
+    }
+    prometheus_not_ingesting = {
+      expr           = "sum by (instance) (rate(prometheus_tsdb_head_samples_appended_total[5m]))"
+      group          = "alerting"
+      operator       = "lt"
+      pending_period = "10m"
+      severity       = "critical"
+      subject        = "{{ $labels.instance }}"
+      summary        = "Prometheus {{ $labels.instance }} has stopped ingesting samples. Every metric alert is blind."
+      threshold      = 1
+      title          = "Prometheus not ingesting"
+    }
+    prometheus_rule_failures = {
+      expr           = "sum by (instance, rule_group) (increase(prometheus_rule_evaluation_failures_total[5m]))"
+      group          = "alerting"
+      operator       = "gt"
+      pending_period = "15m"
+      severity       = "warning"
+      subject        = "{{ $labels.rule_group }}"
+      summary        = "Prometheus rules in {{ $labels.rule_group }} are failing to evaluate, so the recording rules they feed are stale."
+      threshold      = 0
+      title          = "Prometheus rule failures"
+    }
 
     # ── Control plane (self-managed clusters only) ────────────────────────
     apiserver_errors = {
@@ -360,6 +522,21 @@ locals {
       summary        = "{{ humanize $values.A.Value }}% of API server requests are failing with 5xx."
       threshold      = 5
       title          = "API server error rate high"
+    }
+    apiserver_client_certificate_expiring = {
+      # The soonest-expiring 1% of certificates clients presented to the API
+      # server. k3s rotates its certificates on restart within 90 days of
+      # expiry.
+      expr           = "histogram_quantile(0.01, sum by (job, le) (rate(apiserver_client_certificate_expiration_seconds_bucket[5m])))"
+      group          = "control-plane"
+      operator       = "lt"
+      pending_period = "15m"
+      requires       = "apiserver"
+      severity       = "warning"
+      subject        = "API server clients"
+      summary        = "A client certificate used with the API server expires in {{ humanizeDuration $values.A.Value }}."
+      threshold      = 604800
+      title          = "Client certificate expiring"
     }
     etcd_no_leader = {
       expr           = "min by (instance) (etcd_server_has_leader)"
