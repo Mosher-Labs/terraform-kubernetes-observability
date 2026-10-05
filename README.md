@@ -311,13 +311,13 @@ A rule has fields every backend shares, and a block for each backend:
 ```hcl
 pod_crash_looping = {
   datadog = {
-    query               = "sum(__WINDOW__):default_zero(diff(max:kubernetes_state.container.restarts{__SCOPE__} by {kube_namespace,pod_name,kube_container_name}))"
+    query               = "sum($${window}):default_zero(diff(max:kubernetes_state.container.restarts{$${scope}} by {kube_namespace,pod_name,kube_container_name}))"
     require_full_window = false
     summary             = "{{kube_namespace.name}}/{{pod_name.name}} ({{kube_container_name.name}}) restarted {{value}} times in 15 minutes."
     window              = "last_15m"
   }
   grafana = {
-    expr           = "sum by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total{__SEL__}[15m]))"
+    expr           = "sum by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total$${sel}[15m]))"
     pending_period = "1m"
     subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
     summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) restarted more than 5 times in 15 minutes."
@@ -346,9 +346,11 @@ synthetic_check_failing = {
   different semantics. A Datadog service check's threshold counts failed check
   runs, for example. Each replacement has a comment saying why, and
   `tests/catalog.tftest.hcl` lists them all.
-- The catalog fills in the placeholders (`__SEL__`, `__SCOPE__` and so on) from
-  its inputs, so a rule's query comes out ready to use. A Datadog query stops
-  before its comparison, which `modules/datadog` adds.
+- Queries are templates. A rule writes `$${sel}` or `$${scope}` (the doubled `$`
+  is HCL's escape), and the catalog fills them in from its inputs with
+  `templatestring()`, so a rule's query comes out ready to use. The variables
+  are listed in `modules/catalog/locals.tf`. A Datadog query stops before its
+  comparison, which `modules/datadog` adds.
 - `disabled_rules`, `overrides` and the `apm`, `backing_services` and
   `control_plane` flags work the same for both. `custom_rules` stays in
   `modules/alerts`, because it takes native queries.

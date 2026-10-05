@@ -39,6 +39,14 @@ backend you picked. Overrides are applied and every placeholder is filled in.
 | `grafana` | `expr` (PromQL, evaluated as an instant query), `pending_period`, `subject`, `summary` |
 | `datadog` | `query`, `summary`, `window`, and where a rule sets them `type`, `require_full_window`, `on_missing_data` and `default_zero` |
 
+Queries and text in the catalog are templates, filled in with
+`templatestring()`. A rule writes `$${name}` in HCL. The variables are `metric`,
+`service_label`, `route_label`, `status_label`, `floor`, `span` and `apm_scope`
+(from `apm`), `sel`, `asel` and `bsel` (the workload, APM and backing-service
+scopes as `{scope}`, or nothing when empty), `sel_more`, `asel_more` and
+`bsel_more` (the same as `,scope`, for braces that already hold a matcher),
+`tags`, and per rule `scope`, `window` and `last`. `locals.tf` explains each.
+
 A Datadog `query` stops before its comparison: the renderer adds the operator
 and the threshold. A service check's query is complete, and its `threshold`
 counts failed check runs.

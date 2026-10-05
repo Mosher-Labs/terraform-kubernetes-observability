@@ -172,7 +172,7 @@ run "no_selector_leaves_no_placeholder" {
   }
 
   assert {
-    condition     = alltrue([for r in values(output.rules) : !strcontains(r.expr, "__SEL__") && !strcontains(r.expr, "{}")])
+    condition     = alltrue([for r in values(output.rules) : !strcontains(r.expr, "$${") && !strcontains(r.expr, "{}")])
     error_message = "With no selector, every placeholder should be removed without leaving empty braces."
   }
 }
@@ -340,7 +340,7 @@ run "each_backing_service_section_is_separate" {
   }
 
   assert {
-    condition     = alltrue([for id, r in output.rules : !strcontains(r.expr, "__BSEL__") if r.group == "backing-services"])
+    condition     = alltrue([for id, r in output.rules : !strcontains(r.expr, "$${") if r.group == "backing-services"])
     error_message = "No selector placeholder should be left."
   }
 }

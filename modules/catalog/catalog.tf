@@ -32,14 +32,10 @@
 # query. Every rule needs a block or a skip for both backends: the check in
 # checks.tf and the tests fail otherwise.
 #
-# Placeholders in queries and text, filled in by locals.tf:
-#   __SEL__    workload scope (grafana), in the forms {__SEL__} and ,__SEL__}
-#   __BSEL__   backing-service scope (grafana), same forms
-#   __SCOPE__  cluster tag plus the workload or backing-service scope (datadog)
-#   __WINDOW__ the window after overrides (datadog)
-#   __TAGS__, __LAST__  service checks: the cluster tag, and the number of
-#              check runs to look back over, which is the threshold plus one
-# The APM rules add placeholders of their own, listed in catalog_apm.tf.
+# Queries and text are templates. Write `$${name}` (HCL needs the doubled $) and
+# locals.tf fills it in with templatestring(); it lists the variables. A rule
+# can use any of them. Text with a literal `${` or `%{` in the output would need
+# escaping for templatestring; no rule has one.
 #
 # Rule IDs are part of the interface: callers use them in `overrides` and
 # `disabled_rules`. Renaming or removing one is a breaking change.
@@ -52,13 +48,13 @@ locals {
     # ── Pods ──────────────────────────────────────────────────────────────
     container_oom_killed = {
       datadog = {
-        query               = "sum(__WINDOW__):default_zero(diff(max:kubernetes_state.container.restarts{__SCOPE__} by {kube_namespace,pod_name,kube_container_name})) * default_zero(max:kubernetes.containers.last_state.terminated{reason:oomkilled AND __SCOPE__} by {kube_namespace,pod_name,kube_container_name})"
+        query               = "sum($${window}):default_zero(diff(max:kubernetes_state.container.restarts{$${scope}} by {kube_namespace,pod_name,kube_container_name})) * default_zero(max:kubernetes.containers.last_state.terminated{reason:oomkilled AND $${scope}} by {kube_namespace,pod_name,kube_container_name})"
         require_full_window = false
         summary             = "{{kube_namespace.name}}/{{pod_name.name}} ({{kube_container_name.name}}) was OOM killed in the last 15 minutes. Raise its memory limit or find the leak."
         window              = "last_15m"
       }
       grafana = {
-        expr           = "sum by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total{__SEL__}[15m]) > 0 and on (namespace, pod, container) kube_pod_container_status_last_terminated_reason{reason=\"OOMKilled\",__SEL__} == 1)"
+        expr           = "sum by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total$${sel}[15m]) > 0 and on (namespace, pod, container) kube_pod_container_status_last_terminated_reason{reason=\"OOMKilled\"$${sel_more}} == 1)"
         pending_period = "0s"
         subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) was OOM killed in the last 15 minutes. Raise its memory limit or find the leak."
@@ -72,13 +68,13 @@ locals {
     }
     pod_crash_looping = {
       datadog = {
-        query               = "sum(__WINDOW__):default_zero(diff(max:kubernetes_state.container.restarts{__SCOPE__} by {kube_namespace,pod_name,kube_container_name}))"
+        query               = "sum($${window}):default_zero(diff(max:kubernetes_state.container.restarts{$${scope}} by {kube_namespace,pod_name,kube_container_name}))"
         require_full_window = false
         summary             = "{{kube_namespace.name}}/{{pod_name.name}} ({{kube_container_name.name}}) restarted {{value}} times in 15 minutes."
         window              = "last_15m"
       }
       grafana = {
-        expr           = "sum by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total{__SEL__}[15m]))"
+        expr           = "sum by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total$${sel}[15m]))"
         pending_period = "1m"
         subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) restarted more than 5 times in 15 minutes."
@@ -93,14 +89,14 @@ locals {
     pod_not_ready = {
       # Running pods that fail their readiness check, so they get no traffic.
       datadog = {
-        query   = "min(__WINDOW__):default_zero(max:kubernetes_state.pod.ready{condition:false AND __SCOPE__} by {kube_namespace,pod_name}) * default_zero(max:kubernetes_state.pod.status_phase{pod_phase:running AND __SCOPE__} by {kube_namespace,pod_name})"
+        query   = "min($${window}):default_zero(max:kubernetes_state.pod.ready{condition:false AND $${scope}} by {kube_namespace,pod_name}) * default_zero(max:kubernetes_state.pod.status_phase{pod_phase:running AND $${scope}} by {kube_namespace,pod_name})"
         summary = "{{kube_namespace.name}}/{{pod_name.name}} is running but has failed its readiness check for 15 minutes, so it gets no traffic."
         window  = "last_15m"
       }
       grafana = {
         # Running pods only: completed Job pods are never Ready, and pending or
         # failing-to-start pods have their own rules.
-        expr           = "max by (namespace, pod) (kube_pod_status_ready{condition=\"false\",__SEL__}) * on (namespace, pod) max by (namespace, pod) (kube_pod_status_phase{phase=\"Running\",__SEL__})"
+        expr           = "max by (namespace, pod) (kube_pod_status_ready{condition=\"false\"$${sel_more}}) * on (namespace, pod) max by (namespace, pod) (kube_pod_status_phase{phase=\"Running\"$${sel_more}})"
         pending_period = "15m"
         subject        = "{{ $labels.pod }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.pod }} is running but has failed its readiness check for 15 minutes, so it gets no traffic."
@@ -114,12 +110,12 @@ locals {
     }
     pod_pending = {
       datadog = {
-        query   = "min(__WINDOW__):default_zero(max:kubernetes_state.pod.status_phase{pod_phase:pending AND __SCOPE__} by {kube_namespace,pod_name})"
+        query   = "min($${window}):default_zero(max:kubernetes_state.pod.status_phase{pod_phase:pending AND $${scope}} by {kube_namespace,pod_name})"
         summary = "{{kube_namespace.name}}/{{pod_name.name}} has been pending for 5 minutes. Check for unschedulable resources, taints or unbound volumes."
         window  = "last_5m"
       }
       grafana = {
-        expr           = "max by (namespace, pod) (kube_pod_status_phase{phase=\"Pending\",__SEL__})"
+        expr           = "max by (namespace, pod) (kube_pod_status_phase{phase=\"Pending\"$${sel_more}})"
         pending_period = "5m"
         subject        = "{{ $labels.pod }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.pod }} has been pending for 5 minutes. Check for unschedulable resources, taints or unbound volumes."
@@ -133,12 +129,12 @@ locals {
     }
     pod_waiting_failure = {
       datadog = {
-        query   = "min(__WINDOW__):default_zero(max:kubernetes_state.container.status_report.count.waiting{reason IN (crashloopbackoff,imagepullbackoff,errimagepull,createcontainerconfigerror,invalidimagename) AND __SCOPE__} by {kube_namespace,pod_name,kube_container_name,reason})"
+        query   = "min($${window}):default_zero(max:kubernetes_state.container.status_report.count.waiting{reason IN (crashloopbackoff,imagepullbackoff,errimagepull,createcontainerconfigerror,invalidimagename) AND $${scope}} by {kube_namespace,pod_name,kube_container_name,reason})"
         summary = "{{kube_namespace.name}}/{{pod_name.name}} ({{kube_container_name.name}}) has been waiting in {{reason.name}} for 5 minutes."
         window  = "last_5m"
       }
       grafana = {
-        expr           = "max by (namespace, pod, container, reason) (kube_pod_container_status_waiting_reason{reason=~\"CrashLoopBackOff|ImagePullBackOff|ErrImagePull|CreateContainerConfigError|InvalidImageName\",__SEL__})"
+        expr           = "max by (namespace, pod, container, reason) (kube_pod_container_status_waiting_reason{reason=~\"CrashLoopBackOff|ImagePullBackOff|ErrImagePull|CreateContainerConfigError|InvalidImageName\"$${sel_more}})"
         pending_period = "5m"
         subject        = "{{ $labels.container }} in {{ $labels.namespace }} ({{ $labels.reason }})"
         summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) has been waiting in {{ $labels.reason }} for 5 minutes."
@@ -154,12 +150,12 @@ locals {
     # ── Workloads ─────────────────────────────────────────────────────────
     daemonset_not_ready = {
       datadog = {
-        query   = "min(__WINDOW__):max:kubernetes_state.daemonset.desired{__SCOPE__} by {kube_namespace,kube_daemon_set} - max:kubernetes_state.daemonset.ready{__SCOPE__} by {kube_namespace,kube_daemon_set}"
+        query   = "min($${window}):max:kubernetes_state.daemonset.desired{$${scope}} by {kube_namespace,kube_daemon_set} - max:kubernetes_state.daemonset.ready{$${scope}} by {kube_namespace,kube_daemon_set}"
         summary = "{{kube_namespace.name}}/{{kube_daemon_set.name}} has had pods not ready for 15 minutes."
         window  = "last_15m"
       }
       grafana = {
-        expr           = "max by (namespace, daemonset) (kube_daemonset_status_desired_number_scheduled{__SEL__} - kube_daemonset_status_number_ready{__SEL__})"
+        expr           = "max by (namespace, daemonset) (kube_daemonset_status_desired_number_scheduled$${sel} - kube_daemonset_status_number_ready$${sel})"
         pending_period = "15m"
         subject        = "{{ $labels.daemonset }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.daemonset }} has had pods not ready for 15 minutes."
@@ -173,12 +169,12 @@ locals {
     }
     deployment_rollout_stuck = {
       datadog = {
-        query   = "min(__WINDOW__):default_zero(max:kubernetes_state.deployment.condition{condition:progressing AND status:false AND __SCOPE__} by {kube_namespace,kube_deployment})"
+        query   = "min($${window}):default_zero(max:kubernetes_state.deployment.condition{condition:progressing AND status:false AND $${scope}} by {kube_namespace,kube_deployment})"
         summary = "{{kube_namespace.name}}/{{kube_deployment.name}} passed its progress deadline without finishing the rollout."
         window  = "last_5m"
       }
       grafana = {
-        expr           = "max by (namespace, deployment) (kube_deployment_status_condition{condition=\"Progressing\",status=\"false\",__SEL__})"
+        expr           = "max by (namespace, deployment) (kube_deployment_status_condition{condition=\"Progressing\",status=\"false\"$${sel_more}})"
         pending_period = "5m"
         subject        = "{{ $labels.deployment }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.deployment }} passed its progress deadline without finishing the rollout."
@@ -194,7 +190,7 @@ locals {
       # The fraction of desired replicas that are unavailable: 1 when none are
       # available. A deployment scaled to zero divides by zero and has no data.
       datadog = {
-        query   = "min(__WINDOW__):(max:kubernetes_state.deployment.replicas_desired{__SCOPE__} by {kube_namespace,kube_deployment} - max:kubernetes_state.deployment.replicas_available{__SCOPE__} by {kube_namespace,kube_deployment}) / max:kubernetes_state.deployment.replicas_desired{__SCOPE__} by {kube_namespace,kube_deployment}"
+        query   = "min($${window}):(max:kubernetes_state.deployment.replicas_desired{$${scope}} by {kube_namespace,kube_deployment} - max:kubernetes_state.deployment.replicas_available{$${scope}} by {kube_namespace,kube_deployment}) / max:kubernetes_state.deployment.replicas_desired{$${scope}} by {kube_namespace,kube_deployment}"
         summary = "{{kube_namespace.name}}/{{kube_deployment.name}} wants replicas but has none available."
         # The fraction of desired replicas that are unavailable, so 1 means none are
         # available.
@@ -202,7 +198,7 @@ locals {
         window    = "last_5m"
       }
       grafana = {
-        expr           = "max by (namespace, deployment) (kube_deployment_spec_replicas{__SEL__} > 0 unless on (namespace, deployment) kube_deployment_status_replicas_available{__SEL__} > 0)"
+        expr           = "max by (namespace, deployment) (kube_deployment_spec_replicas$${sel} > 0 unless on (namespace, deployment) kube_deployment_status_replicas_available$${sel} > 0)"
         pending_period = "5m"
         subject        = "{{ $labels.deployment }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.deployment }} wants replicas but has none available."
@@ -216,12 +212,12 @@ locals {
     }
     deployment_under_replicated = {
       datadog = {
-        query   = "min(__WINDOW__):max:kubernetes_state.deployment.replicas_desired{__SCOPE__} by {kube_namespace,kube_deployment} - max:kubernetes_state.deployment.replicas_available{__SCOPE__} by {kube_namespace,kube_deployment}"
+        query   = "min($${window}):max:kubernetes_state.deployment.replicas_desired{$${scope}} by {kube_namespace,kube_deployment} - max:kubernetes_state.deployment.replicas_available{$${scope}} by {kube_namespace,kube_deployment}"
         summary = "{{kube_namespace.name}}/{{kube_deployment.name}} has had fewer available replicas than desired for 10 minutes."
         window  = "last_10m"
       }
       grafana = {
-        expr           = "max by (namespace, deployment) (kube_deployment_spec_replicas{__SEL__} - kube_deployment_status_replicas_available{__SEL__})"
+        expr           = "max by (namespace, deployment) (kube_deployment_spec_replicas$${sel} - kube_deployment_status_replicas_available$${sel})"
         pending_period = "10m"
         subject        = "{{ $labels.deployment }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.deployment }} has had fewer available replicas than desired for 10 minutes."
@@ -235,12 +231,12 @@ locals {
     }
     hpa_at_max = {
       datadog = {
-        query   = "min(__WINDOW__):max:kubernetes_state.hpa.current_replicas{__SCOPE__} by {kube_namespace,horizontalpodautoscaler} / max:kubernetes_state.hpa.max_replicas{__SCOPE__} by {kube_namespace,horizontalpodautoscaler}"
+        query   = "min($${window}):max:kubernetes_state.hpa.current_replicas{$${scope}} by {kube_namespace,horizontalpodautoscaler} / max:kubernetes_state.hpa.max_replicas{$${scope}} by {kube_namespace,horizontalpodautoscaler}"
         summary = "{{kube_namespace.name}}/{{horizontalpodautoscaler.name}} has run at its maximum replicas for 30 minutes and can't scale further."
         window  = "last_30m"
       }
       grafana = {
-        expr           = "max by (namespace, horizontalpodautoscaler) (kube_horizontalpodautoscaler_status_current_replicas{__SEL__} / kube_horizontalpodautoscaler_spec_max_replicas{__SEL__})"
+        expr           = "max by (namespace, horizontalpodautoscaler) (kube_horizontalpodautoscaler_status_current_replicas$${sel} / kube_horizontalpodautoscaler_spec_max_replicas$${sel})"
         pending_period = "30m"
         subject        = "{{ $labels.horizontalpodautoscaler }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler }} has run at its maximum replicas for 30 minutes and can't scale further."
@@ -254,13 +250,13 @@ locals {
     }
     job_failed = {
       datadog = {
-        query               = "max(__WINDOW__):default_zero(max:kubernetes_state.job.completion.failed{__SCOPE__} by {kube_namespace,kube_job})"
+        query               = "max($${window}):default_zero(max:kubernetes_state.job.completion.failed{$${scope}} by {kube_namespace,kube_job})"
         require_full_window = false
         summary             = "Job {{kube_namespace.name}}/{{kube_job.name}} failed. Check its pods' logs; it stays failed until the Job is deleted or rerun."
         window              = "last_5m"
       }
       grafana = {
-        expr           = "max by (namespace, job_name) (kube_job_failed{condition=\"true\",__SEL__})"
+        expr           = "max by (namespace, job_name) (kube_job_failed{condition=\"true\"$${sel_more}})"
         pending_period = "0s"
         subject        = "{{ $labels.job_name }} in {{ $labels.namespace }}"
         summary        = "Job {{ $labels.namespace }}/{{ $labels.job_name }} failed. Check its pods' logs; it stays failed until the Job is deleted or rerun."
@@ -276,13 +272,13 @@ locals {
       # Multiplying by active / active keeps the duration while the Job has
       # active pods and leaves a gap once it finishes.
       datadog = {
-        query               = "max(__WINDOW__):max:kubernetes_state.job.duration{__SCOPE__} by {kube_namespace,kube_job} * max:kubernetes_state.job.active{__SCOPE__} by {kube_namespace,kube_job} / max:kubernetes_state.job.active{__SCOPE__} by {kube_namespace,kube_job}"
+        query               = "max($${window}):max:kubernetes_state.job.duration{$${scope}} by {kube_namespace,kube_job} * max:kubernetes_state.job.active{$${scope}} by {kube_namespace,kube_job} / max:kubernetes_state.job.active{$${scope}} by {kube_namespace,kube_job}"
         require_full_window = false
         summary             = "Job {{kube_namespace.name}}/{{kube_job.name}} has been running for {{value}}s. It may be stuck."
         window              = "last_5m"
       }
       grafana = {
-        expr           = "max by (namespace, job_name) (time() - kube_job_status_start_time{__SEL__} and on (namespace, job_name) kube_job_status_active{__SEL__} > 0)"
+        expr           = "max by (namespace, job_name) (time() - kube_job_status_start_time$${sel} and on (namespace, job_name) kube_job_status_active$${sel} > 0)"
         pending_period = "0s"
         subject        = "{{ $labels.job_name }} in {{ $labels.namespace }}"
         summary        = "Job {{ $labels.namespace }}/{{ $labels.job_name }} has been running for {{ humanizeDuration $values.A.Value }}. It may be stuck."
@@ -296,12 +292,12 @@ locals {
     }
     statefulset_under_replicated = {
       datadog = {
-        query   = "min(__WINDOW__):max:kubernetes_state.statefulset.replicas_desired{__SCOPE__} by {kube_namespace,kube_stateful_set} - max:kubernetes_state.statefulset.replicas_ready{__SCOPE__} by {kube_namespace,kube_stateful_set}"
+        query   = "min($${window}):max:kubernetes_state.statefulset.replicas_desired{$${scope}} by {kube_namespace,kube_stateful_set} - max:kubernetes_state.statefulset.replicas_ready{$${scope}} by {kube_namespace,kube_stateful_set}"
         summary = "{{kube_namespace.name}}/{{kube_stateful_set.name}} has had fewer ready replicas than desired for 15 minutes."
         window  = "last_15m"
       }
       grafana = {
-        expr           = "max by (namespace, statefulset) (kube_statefulset_replicas{__SEL__} - kube_statefulset_status_replicas_ready{__SEL__})"
+        expr           = "max by (namespace, statefulset) (kube_statefulset_replicas$${sel} - kube_statefulset_status_replicas_ready$${sel})"
         pending_period = "15m"
         subject        = "{{ $labels.statefulset }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.statefulset }} has had fewer ready replicas than desired for 15 minutes."
@@ -319,12 +315,12 @@ locals {
       # kubernetes.cpu.usage.total is in nanocores and kubernetes.cpu.limits in
       # cores.
       datadog = {
-        query   = "min(__WINDOW__):100 * max:kubernetes.cpu.usage.total{__SCOPE__} by {kube_namespace,pod_name,kube_container_name} / (max:kubernetes.cpu.limits{__SCOPE__} by {kube_namespace,pod_name,kube_container_name} * 1000000000)"
+        query   = "min($${window}):100 * max:kubernetes.cpu.usage.total{$${scope}} by {kube_namespace,pod_name,kube_container_name} / (max:kubernetes.cpu.limits{$${scope}} by {kube_namespace,pod_name,kube_container_name} * 1000000000)"
         summary = "{{kube_namespace.name}}/{{pod_name.name}} ({{kube_container_name.name}}) is using {{value}}% of its CPU limit."
         window  = "last_15m"
       }
       grafana = {
-        expr           = "100 * max by (namespace, pod, container) (rate(container_cpu_usage_seconds_total{container!=\"\",__SEL__}[5m]) / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"cpu\",__SEL__})"
+        expr           = "100 * max by (namespace, pod, container) (rate(container_cpu_usage_seconds_total{container!=\"\"$${sel_more}}[5m]) / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"cpu\"$${sel_more}})"
         pending_period = "15m"
         subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its CPU limit."
@@ -338,12 +334,12 @@ locals {
     }
     container_cpu_near_limit_warning = {
       datadog = {
-        query   = "min(__WINDOW__):100 * max:kubernetes.cpu.usage.total{__SCOPE__} by {kube_namespace,pod_name,kube_container_name} / (max:kubernetes.cpu.limits{__SCOPE__} by {kube_namespace,pod_name,kube_container_name} * 1000000000)"
+        query   = "min($${window}):100 * max:kubernetes.cpu.usage.total{$${scope}} by {kube_namespace,pod_name,kube_container_name} / (max:kubernetes.cpu.limits{$${scope}} by {kube_namespace,pod_name,kube_container_name} * 1000000000)"
         summary = "{{kube_namespace.name}}/{{pod_name.name}} ({{kube_container_name.name}}) is using {{value}}% of its CPU limit."
         window  = "last_15m"
       }
       grafana = {
-        expr           = "100 * max by (namespace, pod, container) (rate(container_cpu_usage_seconds_total{container!=\"\",__SEL__}[5m]) / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"cpu\",__SEL__})"
+        expr           = "100 * max by (namespace, pod, container) (rate(container_cpu_usage_seconds_total{container!=\"\"$${sel_more}}[5m]) / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"cpu\"$${sel_more}})"
         pending_period = "15m"
         subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its CPU limit."
@@ -357,14 +353,14 @@ locals {
     }
     container_cpu_throttled = {
       datadog = {
-        query   = "min(__WINDOW__):100 * max:kubernetes.cpu.cfs.throttled.periods{__SCOPE__} by {kube_namespace,pod_name,kube_container_name} / max:kubernetes.cpu.cfs.periods{__SCOPE__} by {kube_namespace,pod_name,kube_container_name}"
+        query   = "min($${window}):100 * max:kubernetes.cpu.cfs.throttled.periods{$${scope}} by {kube_namespace,pod_name,kube_container_name} / max:kubernetes.cpu.cfs.periods{$${scope}} by {kube_namespace,pod_name,kube_container_name}"
         summary = "{{kube_namespace.name}}/{{pod_name.name}} ({{kube_container_name.name}}) was throttled in {{value}}% of CPU periods."
         window  = "last_15m"
       }
       # Average usage hides throttling: a container can sit well under its
       # limit on average and still be throttled in most scheduler periods.
       grafana = {
-        expr           = "100 * max by (namespace, pod, container) (increase(container_cpu_cfs_throttled_periods_total{container!=\"\",__SEL__}[5m]) / increase(container_cpu_cfs_periods_total{container!=\"\",__SEL__}[5m]))"
+        expr           = "100 * max by (namespace, pod, container) (increase(container_cpu_cfs_throttled_periods_total{container!=\"\"$${sel_more}}[5m]) / increase(container_cpu_cfs_periods_total{container!=\"\"$${sel_more}}[5m]))"
         pending_period = "15m"
         subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) was throttled in {{ humanize $values.A.Value }}% of CPU periods."
@@ -379,12 +375,12 @@ locals {
     container_ephemeral_storage_near_limit = {
       # The kubelet reports ephemeral storage per pod, not per container.
       datadog = {
-        query   = "min(__WINDOW__):100 * max:kubernetes.ephemeral_storage.usage{__SCOPE__} by {kube_namespace,pod_name} / max:kubernetes.ephemeral_storage.limits{__SCOPE__} by {kube_namespace,pod_name}"
+        query   = "min($${window}):100 * max:kubernetes.ephemeral_storage.usage{$${scope}} by {kube_namespace,pod_name} / max:kubernetes.ephemeral_storage.limits{$${scope}} by {kube_namespace,pod_name}"
         summary = "{{kube_namespace.name}}/{{pod_name.name}} is using {{value}}% of its ephemeral storage limit. The kubelet evicts it at 100%."
         window  = "last_5m"
       }
       grafana = {
-        expr           = "100 * max by (namespace, pod, container) (container_fs_usage_bytes{container!=\"\",__SEL__} / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"ephemeral_storage\",__SEL__})"
+        expr           = "100 * max by (namespace, pod, container) (container_fs_usage_bytes{container!=\"\"$${sel_more}} / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"ephemeral_storage\"$${sel_more}})"
         pending_period = "5m"
         subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its ephemeral storage limit. The kubelet evicts it at 100%."
@@ -398,12 +394,12 @@ locals {
     }
     container_memory_near_limit_critical = {
       datadog = {
-        query   = "min(__WINDOW__):100 * max:kubernetes.memory.working_set{__SCOPE__} by {kube_namespace,pod_name,kube_container_name} / max:kubernetes.memory.limits{__SCOPE__} by {kube_namespace,pod_name,kube_container_name}"
+        query   = "min($${window}):100 * max:kubernetes.memory.working_set{$${scope}} by {kube_namespace,pod_name,kube_container_name} / max:kubernetes.memory.limits{$${scope}} by {kube_namespace,pod_name,kube_container_name}"
         summary = "{{kube_namespace.name}}/{{pod_name.name}} ({{kube_container_name.name}}) is using {{value}}% of its memory limit and will be OOM killed at 100%."
         window  = "last_5m"
       }
       grafana = {
-        expr           = "100 * max by (namespace, pod, container) (container_memory_working_set_bytes{container!=\"\",__SEL__} / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"memory\",__SEL__})"
+        expr           = "100 * max by (namespace, pod, container) (container_memory_working_set_bytes{container!=\"\"$${sel_more}} / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"memory\"$${sel_more}})"
         pending_period = "5m"
         subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its memory limit and will be OOM killed at 100%."
@@ -417,12 +413,12 @@ locals {
     }
     container_memory_near_limit_warning = {
       datadog = {
-        query   = "min(__WINDOW__):100 * max:kubernetes.memory.working_set{__SCOPE__} by {kube_namespace,pod_name,kube_container_name} / max:kubernetes.memory.limits{__SCOPE__} by {kube_namespace,pod_name,kube_container_name}"
+        query   = "min($${window}):100 * max:kubernetes.memory.working_set{$${scope}} by {kube_namespace,pod_name,kube_container_name} / max:kubernetes.memory.limits{$${scope}} by {kube_namespace,pod_name,kube_container_name}"
         summary = "{{kube_namespace.name}}/{{pod_name.name}} ({{kube_container_name.name}}) is using {{value}}% of its memory limit."
         window  = "last_10m"
       }
       grafana = {
-        expr           = "100 * max by (namespace, pod, container) (container_memory_working_set_bytes{container!=\"\",__SEL__} / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"memory\",__SEL__})"
+        expr           = "100 * max by (namespace, pod, container) (container_memory_working_set_bytes{container!=\"\"$${sel_more}} / on (namespace, pod, container) group_left kube_pod_container_resource_limits{resource=\"memory\"$${sel_more}})"
         pending_period = "10m"
         subject        = "{{ $labels.container }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is using {{ humanize $values.A.Value }}% of its memory limit."
@@ -437,7 +433,7 @@ locals {
     persistent_volume_errors = {
       # PersistentVolumes are cluster-wide, so workload_scope doesn't apply.
       datadog = {
-        query   = "min(__WINDOW__):default_zero(max:kubernetes_state.persistentvolume.by_phase{phase IN (failed,pending) AND __SCOPE__} by {persistentvolume,phase})"
+        query   = "min($${window}):default_zero(max:kubernetes_state.persistentvolume.by_phase{phase IN (failed,pending) AND $${scope}} by {persistentvolume,phase})"
         summary = "PersistentVolume {{persistentvolume.name}} has been {{phase.name}} for 5 minutes. Pods that use it can't start."
         window  = "last_5m"
       }
@@ -455,12 +451,12 @@ locals {
     }
     pvc_inodes_near_full = {
       datadog = {
-        query   = "min(__WINDOW__):100 * max:kubernetes.kubelet.volume.stats.inodes_used{__SCOPE__} by {kube_namespace,persistentvolumeclaim} / max:kubernetes.kubelet.volume.stats.inodes{__SCOPE__} by {kube_namespace,persistentvolumeclaim}"
+        query   = "min($${window}):100 * max:kubernetes.kubelet.volume.stats.inodes_used{$${scope}} by {kube_namespace,persistentvolumeclaim} / max:kubernetes.kubelet.volume.stats.inodes{$${scope}} by {kube_namespace,persistentvolumeclaim}"
         summary = "PVC {{kube_namespace.name}}/{{persistentvolumeclaim.name}} has used {{value}}% of its inodes. New files fail at 100% even with free space."
         window  = "last_10m"
       }
       grafana = {
-        expr           = "max by (namespace, persistentvolumeclaim) (100 * kubelet_volume_stats_inodes_used{__SEL__} / kubelet_volume_stats_inodes{__SEL__})"
+        expr           = "max by (namespace, persistentvolumeclaim) (100 * kubelet_volume_stats_inodes_used$${sel} / kubelet_volume_stats_inodes$${sel})"
         pending_period = "10m"
         subject        = "{{ $labels.persistentvolumeclaim }} in {{ $labels.namespace }}"
         summary        = "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} has used {{ humanize $values.A.Value }}% of its inodes. New files fail at 100% even with free space."
@@ -474,12 +470,12 @@ locals {
     }
     pvc_near_full_critical = {
       datadog = {
-        query   = "min(__WINDOW__):100 * max:kubernetes.kubelet.volume.stats.used_bytes{__SCOPE__} by {kube_namespace,persistentvolumeclaim} / max:kubernetes.kubelet.volume.stats.capacity_bytes{__SCOPE__} by {kube_namespace,persistentvolumeclaim}"
+        query   = "min($${window}):100 * max:kubernetes.kubelet.volume.stats.used_bytes{$${scope}} by {kube_namespace,persistentvolumeclaim} / max:kubernetes.kubelet.volume.stats.capacity_bytes{$${scope}} by {kube_namespace,persistentvolumeclaim}"
         summary = "{{kube_namespace.name}}/{{persistentvolumeclaim.name}} is {{value}}% full."
         window  = "last_5m"
       }
       grafana = {
-        expr           = "100 * max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_used_bytes{__SEL__} / kubelet_volume_stats_capacity_bytes{__SEL__})"
+        expr           = "100 * max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_used_bytes$${sel} / kubelet_volume_stats_capacity_bytes$${sel})"
         pending_period = "5m"
         subject        = "{{ $labels.persistentvolumeclaim }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ humanize $values.A.Value }}% full."
@@ -493,12 +489,12 @@ locals {
     }
     pvc_near_full_warning = {
       datadog = {
-        query   = "min(__WINDOW__):100 * max:kubernetes.kubelet.volume.stats.used_bytes{__SCOPE__} by {kube_namespace,persistentvolumeclaim} / max:kubernetes.kubelet.volume.stats.capacity_bytes{__SCOPE__} by {kube_namespace,persistentvolumeclaim}"
+        query   = "min($${window}):100 * max:kubernetes.kubelet.volume.stats.used_bytes{$${scope}} by {kube_namespace,persistentvolumeclaim} / max:kubernetes.kubelet.volume.stats.capacity_bytes{$${scope}} by {kube_namespace,persistentvolumeclaim}"
         summary = "{{kube_namespace.name}}/{{persistentvolumeclaim.name}} is {{value}}% full."
         window  = "last_10m"
       }
       grafana = {
-        expr           = "100 * max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_used_bytes{__SEL__} / kubelet_volume_stats_capacity_bytes{__SEL__})"
+        expr           = "100 * max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_used_bytes$${sel} / kubelet_volume_stats_capacity_bytes$${sel})"
         pending_period = "10m"
         subject        = "{{ $labels.persistentvolumeclaim }} in {{ $labels.namespace }}"
         summary        = "{{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ humanize $values.A.Value }}% full."
@@ -514,7 +510,7 @@ locals {
     # ── Nodes ─────────────────────────────────────────────────────────────
     kubelet_certificate_expiring = {
       datadog = {
-        query   = "max(__WINDOW__):min:kubernetes.kubelet.certificate_manager.client_ttl{__SCOPE__} by {host}"
+        query   = "max($${window}):min:kubernetes.kubelet.certificate_manager.client_ttl{$${scope}} by {host}"
         summary = "The kubelet's client certificate on {{host.name}} expires in {{value}}s."
         window  = "last_15m"
       }
@@ -536,7 +532,7 @@ locals {
       # The Agent's NTP check is on by default and reports the offset from its
       # NTP servers.
       datadog = {
-        query   = "\"ntp.in_sync\".over(__TAGS__).by(\"host\").last(__LAST__).count_by_status()"
+        query   = "\"ntp.in_sync\".over($${tags}).by(\"host\").last($${last}).count_by_status()"
         summary = "{{host.name}}'s clock is out of sync with NTP."
         type    = "service check"
       }
@@ -554,7 +550,7 @@ locals {
     }
     node_clock_skew = {
       datadog = {
-        query = "min(__WINDOW__):abs(max:ntp.offset{__SCOPE__} by {host})"
+        query = "min($${window}):abs(max:ntp.offset{$${scope}} by {host})"
         # The NTP check runs every 15 minutes, so a shorter window never fills.
         require_full_window = false
         summary             = "{{host.name}}'s clock is {{value}}s off. Skew breaks TLS, tokens and log ordering; check NTP."
@@ -574,7 +570,7 @@ locals {
     }
     node_disk_full = {
       datadog = {
-        query   = "min(__WINDOW__):100 * max:system.disk.in_use{__SCOPE__} by {host,device}"
+        query   = "min($${window}):100 * max:system.disk.in_use{$${scope}} by {host,device}"
         summary = "{{device.name}} on {{host.name}} is {{value}}% full."
         window  = "last_10m"
       }
@@ -592,7 +588,7 @@ locals {
     }
     node_inodes_low = {
       datadog = {
-        query   = "min(__WINDOW__):100 * max:system.fs.inodes.in_use{__SCOPE__} by {host,device}"
+        query   = "min($${window}):100 * max:system.fs.inodes.in_use{$${scope}} by {host,device}"
         summary = "{{device.name}} on {{host.name}} has used {{value}}% of its inodes. New files fail at 100% even with free space."
         window  = "last_10m"
       }
@@ -610,7 +606,7 @@ locals {
     }
     node_memory_high = {
       datadog = {
-        query   = "min(__WINDOW__):100 * (1 - max:system.mem.usable{__SCOPE__} by {host} / max:system.mem.total{__SCOPE__} by {host})"
+        query   = "min($${window}):100 * (1 - max:system.mem.usable{$${scope}} by {host} / max:system.mem.total{$${scope}} by {host})"
         summary = "{{host.name}} is using {{value}}% of its memory."
         window  = "last_10m"
       }
@@ -628,7 +624,7 @@ locals {
     }
     node_network_errors = {
       datadog = {
-        query   = "min(__WINDOW__):max:system.net.packets_in.error{__SCOPE__} by {host,device} + max:system.net.packets_out.error{__SCOPE__} by {host,device}"
+        query   = "min($${window}):max:system.net.packets_in.error{$${scope}} by {host,device} + max:system.net.packets_out.error{$${scope}} by {host,device}"
         summary = "{{device.name}} on {{host.name}} has {{value}} receive/transmit errors per second."
         window  = "last_10m"
       }
@@ -646,7 +642,7 @@ locals {
     }
     node_not_ready = {
       datadog = {
-        query   = "min(__WINDOW__):default_zero(max:kubernetes_state.node.by_condition{condition:ready AND status IN (false,unknown) AND __SCOPE__} by {node})"
+        query   = "min($${window}):default_zero(max:kubernetes_state.node.by_condition{condition:ready AND status IN (false,unknown) AND $${scope}} by {node})"
         summary = "Node {{node.name}} has not been Ready for 5 minutes."
         window  = "last_5m"
       }
@@ -664,7 +660,7 @@ locals {
     }
     node_pressure = {
       datadog = {
-        query   = "min(__WINDOW__):default_zero(max:kubernetes_state.node.by_condition{condition IN (memorypressure,diskpressure,pidpressure) AND status:true AND __SCOPE__} by {node,condition})"
+        query   = "min($${window}):default_zero(max:kubernetes_state.node.by_condition{condition IN (memorypressure,diskpressure,pidpressure) AND status:true AND $${scope}} by {node,condition})"
         summary = "Node {{node.name}} reports {{condition.name}}. The kubelet may start evicting pods."
         window  = "last_5m"
       }
@@ -684,7 +680,7 @@ locals {
       # Counts changes of the Ready condition, as modules/alerts does with
       # changes().
       datadog = {
-        query               = "sum(__WINDOW__):abs(diff(max:kubernetes_state.node.by_condition{condition:ready AND status:true AND __SCOPE__} by {node}))"
+        query               = "sum($${window}):abs(diff(max:kubernetes_state.node.by_condition{condition:ready AND status:true AND $${scope}} by {node}))"
         require_full_window = false
         summary             = "Node {{node.name}} changed Ready state {{value}} times in 15 minutes. Check its network and kubelet."
         window              = "last_15m"
@@ -705,7 +701,7 @@ locals {
       # Needs the Agent's systemd check, which isn't on by default. Without it
       # there's no data and the monitor stays quiet.
       datadog = {
-        query   = "\"systemd.unit.state\".over(__TAGS__).by(\"host\",\"unit\").last(__LAST__).count_by_status()"
+        query   = "\"systemd.unit.state\".over($${tags}).by(\"host\",\"unit\").last($${last}).count_by_status()"
         summary = "systemd unit {{unit.name}} on {{host.name}} has failed."
         # A service check's threshold counts consecutive failed runs, not a value. The
         # Agent runs each check every 15 seconds, so 20 is about 5 minutes.
@@ -730,7 +726,7 @@ locals {
       # The closest match to Prometheus' `up`: an Agent check (an integration
       # or an OpenMetrics endpoint) that keeps failing.
       datadog = {
-        query   = "\"datadog.agent.check_status\".over(__TAGS__).by(\"check\",\"host\").last(__LAST__).count_by_status()"
+        query   = "\"datadog.agent.check_status\".over($${tags}).by(\"check\",\"host\").last($${last}).count_by_status()"
         summary = "The Agent's {{check.name}} check on {{host.name}} has failed for 10 minutes. Alerts that depend on it go quiet."
         # A service check's threshold counts consecutive failed runs, not a value. The
         # Agent runs each check every 15 seconds, so 40 is about 10 minutes.
@@ -897,7 +893,7 @@ locals {
         # Counts requests that used a certificate expiring within 7 days, because
         # Datadog can't take a quantile of the bucket histogram.
         operator            = "gt"
-        query               = "sum(__WINDOW__):default_zero(sum:kube_apiserver.apiserver_client_certificate_expiration_seconds.bucket{upper_bound:604800.0 AND __SCOPE__}.as_count())"
+        query               = "sum($${window}):default_zero(sum:kube_apiserver.apiserver_client_certificate_expiration_seconds.bucket{upper_bound:604800.0 AND $${scope}}.as_count())"
         require_full_window = false
         summary             = "{{value}} API server requests in the last 15 minutes used a client certificate that expires within 7 days."
         # Counts requests that used a certificate expiring within 7 days, because
@@ -923,7 +919,7 @@ locals {
     }
     apiserver_errors = {
       datadog = {
-        query   = "avg(__WINDOW__):100 * sum:kube_apiserver.apiserver_request_total.count{code:5* AND __SCOPE__}.as_rate() / sum:kube_apiserver.apiserver_request_total.count{__SCOPE__}.as_rate()"
+        query   = "avg($${window}):100 * sum:kube_apiserver.apiserver_request_total.count{code:5* AND $${scope}}.as_rate() / sum:kube_apiserver.apiserver_request_total.count{$${scope}}.as_rate()"
         summary = "{{value}}% of API server requests are failing with 5xx."
         window  = "last_10m"
       }
@@ -942,7 +938,7 @@ locals {
     }
     etcd_no_leader = {
       datadog = {
-        query   = "max(__WINDOW__):min:etcd.server.has_leader{__SCOPE__} by {host}"
+        query   = "max($${window}):min:etcd.server.has_leader{$${scope}} by {host}"
         summary = "etcd member {{host.name}} has no leader and can't serve requests."
         window  = "last_1m"
       }
@@ -966,7 +962,7 @@ locals {
       # so it can alert when the cluster stops sending data at all.
       datadog = {
         on_missing_data = "show_and_notify_no_data"
-        query           = "max(__WINDOW__):sum:kubernetes_state.node.count{__SCOPE__}"
+        query           = "max($${window}):sum:kubernetes_state.node.count{$${scope}}"
         summary         = "The cluster has stopped sending Kubernetes metrics to Datadog for 10 minutes. The Agent, its network path or the whole cluster may be down."
         window          = "last_10m"
       }

@@ -96,36 +96,49 @@ locals {
     )
   }
 
-  # The rules turned on, with every placeholder in their text filled in:
-  #   __M__, __S__, __R__, __C__, __FLOOR__, __SPAN__  from var.apm
-  #   __ASEL__, __APM__                                 var.apm.scope
-  #   __BSEL__                                          var.backing_services.scope
-  #   __SEL__                                           var.workload_scope
-  #   __SCOPE__, __TAGS__                               var.cluster_scope and the scopes above
-  #   __WINDOW__, __LAST__                              the window and threshold after overrides
-  # The _SEL_ forms drop out cleanly when the scope is empty: `{__SEL__}`
-  # becomes nothing and `,__SEL__}` becomes `}`.
+  # The variables a rule's query and text can use as `${name}`. Every name must
+  # exist for every rule, because templatestring() fails on one it doesn't know.
+  #   metric, service_label, route_label, status_label, floor, span
+  #                  from var.apm
+  #   apm_scope      var.apm.scope, or * when it is empty
+  #   sel, bsel, asel
+  #                  var.workload_scope, var.backing_services.scope and
+  #                  var.apm.scope as {scope}, or nothing when empty
+  #   sel_more, bsel_more, asel_more
+  #                  the same as ,scope, for a selector that already has a
+  #                  matcher: {a="b"${sel_more}}
+  #   tags           the cluster scope in quotes, for a service check
+  # Each rule also gets:
+  #   scope          datadog filter: the cluster, plus the workload or
+  #                  backing-service scope
+  #   window         the window after overrides, or nothing
+  #   last           the threshold after overrides plus one: how many check
+  #                  runs a service check looks back over
+  template_vars = {
+    apm_scope     = var.apm.scope == "" ? "*" : var.apm.scope
+    asel          = var.apm.scope == "" ? "" : "{${var.apm.scope}}"
+    asel_more     = var.apm.scope == "" ? "" : ",${var.apm.scope}"
+    bsel          = var.backing_services.scope == "" ? "" : "{${var.backing_services.scope}}"
+    bsel_more     = var.backing_services.scope == "" ? "" : ",${var.backing_services.scope}"
+    floor         = tostring(var.apm.min_requests_per_second)
+    metric        = var.apm.metric
+    route_label   = var.apm.route_label
+    sel           = var.workload_scope == "" ? "" : "{${var.workload_scope}}"
+    sel_more      = var.workload_scope == "" ? "" : ",${var.workload_scope}"
+    service_label = var.apm.service_label
+    span          = var.apm.span_name
+    status_label  = var.apm.status_label
+    tags          = "\"${var.cluster_scope}\""
+  }
+
+  # The rules turned on, with the variables filled into their text.
   rules = {
     for id, r in local.with_overrides : id => merge(r, {
-      for field in ["expr", "query", "subject", "summary"] : field => replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(r[field],
-        "__M__", var.apm.metric),
-        "__S__", var.apm.service_label),
-        "__R__", var.apm.route_label),
-        "__C__", var.apm.status_label),
-        "__FLOOR__", tostring(var.apm.min_requests_per_second)),
-        "__SPAN__", var.apm.span_name),
-        "__APM__", var.apm.scope == "" ? "*" : var.apm.scope),
-        ",__ASEL__}", var.apm.scope == "" ? "}" : ",${var.apm.scope}}"),
-        "{__ASEL__}", var.apm.scope == "" ? "" : "{${var.apm.scope}}"),
-        ",__BSEL__}", var.backing_services.scope == "" ? "}" : ",${var.backing_services.scope}}"),
-        "{__BSEL__}", var.backing_services.scope == "" ? "" : "{${var.backing_services.scope}}"),
-        ",__SEL__}", var.workload_scope == "" ? "}" : ",${var.workload_scope}}"),
-        "{__SEL__}", var.workload_scope == "" ? "" : "{${var.workload_scope}}"),
-        "__SCOPE__", local.datadog_scope[id]),
-        "__TAGS__", "\"${var.cluster_scope}\""),
-        "__WINDOW__", try(r.window, null) == null ? "" : r.window),
-        "__LAST__", tostring(r.threshold + 1),
-      ) if contains(keys(r), field)
+      for field in ["expr", "query", "subject", "summary"] : field => templatestring(r[field], merge(local.template_vars, {
+        last   = tostring(r.threshold + 1)
+        scope  = local.datadog_scope[id]
+        window = try(r.window, null) == null ? "" : r.window
+      })) if contains(keys(r), field)
     })
     if !contains(var.disabled_rules, id) && (try(r.requires, null) == null ? true : local.enabled[r.requires])
   }

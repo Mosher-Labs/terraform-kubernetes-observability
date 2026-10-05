@@ -169,12 +169,12 @@ run "no_placeholder_is_left_in_a_rule" {
   }
 
   assert {
-    condition     = alltrue([for id, r in run.grafana.rules : !can(regex("__[A-Z]+__", "${r.expr} ${r.subject} ${r.summary}"))])
+    condition     = alltrue([for id, r in run.grafana.rules : !strcontains("${r.expr} ${r.subject} ${r.summary}", "$${")])
     error_message = "Every placeholder in a Grafana rule should be filled in."
   }
 
   assert {
-    condition     = alltrue([for id, r in run.datadog.rules : !can(regex("__[A-Z]+__", "${r.query} ${r.summary}"))])
+    condition     = alltrue([for id, r in run.datadog.rules : !strcontains("${r.query} ${r.summary}", "$${")])
     error_message = "Every placeholder in a Datadog rule should be filled in."
   }
 }
@@ -332,4 +332,66 @@ run "catalog_must_be_a_known_backend" {
   }
 
   expect_failures = [var.catalog]
+}
+
+# The selector variables have two forms: {scope} after a metric name, and
+# ,scope inside braces that already hold a matcher. Both drop out when the
+# scope is empty.
+run "scopes_fill_in_the_selector_forms" {
+  command = plan
+
+  module {
+    source = "./modules/catalog"
+  }
+
+  variables {
+    apm              = { enabled = true, scope = "env=\"prod\"" }
+    backing_services = { postgres = { enabled = true }, scope = "namespace=\"db\"" }
+    catalog          = "grafana"
+    workload_scope   = "namespace=\"a\""
+  }
+
+  assert {
+    condition     = output.rules.pod_pending.expr == "max by (namespace, pod) (kube_pod_status_phase{phase=\"Pending\",namespace=\"a\"})" && output.rules.job_failed.expr == "max by (namespace, job_name) (kube_job_failed{condition=\"true\",namespace=\"a\"})"
+    error_message = "A workload rule should take the workload scope after a matcher."
+  }
+
+  assert {
+    condition     = output.rules.service_error_rate_high.expr == "100 * sum by (job) (rate(http_server_request_duration_seconds_count{http_response_status_code=~\"5..\",env=\"prod\"}[5m])) / sum by (job) (rate(http_server_request_duration_seconds_count{env=\"prod\"}[5m])) and on (job) sum by (job) (rate(http_server_request_duration_seconds_count{env=\"prod\"}[5m])) >= 0.1"
+    error_message = "An APM rule should take apm.scope in every selector, in both forms."
+  }
+
+  assert {
+    condition     = output.rules.postgres_down.expr == "min by (instance) (pg_up{namespace=\"db\"})"
+    error_message = "A backing-service rule should take backing_services.scope."
+  }
+}
+
+run "empty_scopes_leave_no_selector" {
+  command = plan
+
+  module {
+    source = "./modules/catalog"
+  }
+
+  variables {
+    apm              = { enabled = true }
+    backing_services = { postgres = { enabled = true } }
+    catalog          = "grafana"
+  }
+
+  assert {
+    condition     = output.rules.pod_pending.expr == "max by (namespace, pod) (kube_pod_status_phase{phase=\"Pending\"})" && output.rules.job_not_completed.expr == "max by (namespace, job_name) (time() - kube_job_status_start_time and on (namespace, job_name) kube_job_status_active > 0)"
+    error_message = "With no workload scope, a selector should disappear, with its braces when it was alone."
+  }
+
+  assert {
+    condition     = output.rules.service_error_rate_high.expr == "100 * sum by (job) (rate(http_server_request_duration_seconds_count{http_response_status_code=~\"5..\"}[5m])) / sum by (job) (rate(http_server_request_duration_seconds_count[5m])) and on (job) sum by (job) (rate(http_server_request_duration_seconds_count[5m])) >= 0.1"
+    error_message = "With no apm.scope, an APM rule should have no empty selector."
+  }
+
+  assert {
+    condition     = output.rules.postgres_down.expr == "min by (instance) (pg_up)"
+    error_message = "With no backing_services.scope, a backing-service rule should have no empty selector."
+  }
 }

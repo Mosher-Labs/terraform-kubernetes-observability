@@ -34,7 +34,7 @@ the Grafana provider, so they run without Grafana or credentials.
    `threshold`, not in the query. A query that returns nothing counts as
    healthy. A backend that can't express the rule gets `skip = "reason"`.
 2. Workload rules set `workload = true`, and take the namespace selector
-   through the `__SEL__` placeholder in the Grafana block. Node and
+   through the `$${sel}` template variable in the Grafana block. Node and
    control-plane rules don't.
 3. Prefer `increase()` or `rate()` over a window to raw counters, so the alert
    resolves when the problem stops.

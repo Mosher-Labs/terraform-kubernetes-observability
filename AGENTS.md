@@ -31,7 +31,7 @@ Grafana rules and `modules/datadog` as Datadog monitors. Tests in `tests/` use
 - **Catalog changes:** edit `modules/catalog` only. Define each rule once, with
   a `grafana` and a `datadog` block, or `skip = "reason"` for a backend that
   can't express it. Keep the threshold out of the query (no data counts as
-  healthy), use `__SEL__` for the workload selector on workload rules only, and
+  healthy), use `${sel}` for the workload selector on workload rules only, and
   update the catalog table in README.md and the rule counts in the tests. A
   backend block that replaces a shared field needs a comment saying why, and an
   entry in `tests/catalog.tftest.hcl`.
