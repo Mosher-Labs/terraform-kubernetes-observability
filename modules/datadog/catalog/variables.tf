@@ -72,6 +72,12 @@ variable "disabled_rules" {
   type        = set(string)
 }
 
+variable "metric_notification_handles" {
+  default     = []
+  description = "Extra @-handles for metric monitors only, after notification_handles. modules/datadog uses it for the Webex webhook that attaches the monitor's graph."
+  type        = list(string)
+}
+
 variable "notification_handles" {
   default     = []
   description = "Datadog @-handles every monitor notifies, such as `@slack-homelab` or `@webhook-oncall`. Set up the integrations in Datadog first."
@@ -112,6 +118,12 @@ variable "renotify_interval_minutes" {
     info     = optional(number, 0)
     warning  = optional(number, 240)
   })
+}
+
+variable "service_check_notification_handles" {
+  default     = []
+  description = "Extra @-handles for service-check monitors only, after notification_handles. Service checks have no graph, so modules/datadog sends them a text-only Webex webhook."
+  type        = list(string)
 }
 
 variable "tags" {

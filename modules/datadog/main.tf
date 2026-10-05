@@ -3,17 +3,19 @@
 module "catalog" {
   source = "./catalog"
 
-  apm                       = var.apm
-  backing_services          = var.backing_services
-  cluster_name              = var.cluster_name
-  cluster_tag               = var.cluster_tag
-  control_plane             = var.control_plane
-  disabled_rules            = var.disabled_rules
-  notification_handles      = local.handles
-  overrides                 = var.overrides
-  renotify_interval_minutes = var.renotify_interval_minutes
-  tags                      = var.tags
-  workload_scope            = var.workload_scope
+  apm                                = var.apm
+  backing_services                   = var.backing_services
+  cluster_name                       = var.cluster_name
+  cluster_tag                        = var.cluster_tag
+  control_plane                      = var.control_plane
+  disabled_rules                     = var.disabled_rules
+  metric_notification_handles        = local.metric_handles
+  notification_handles               = local.handles
+  overrides                          = var.overrides
+  renotify_interval_minutes          = var.renotify_interval_minutes
+  service_check_notification_handles = local.service_check_handles
+  tags                               = var.tags
+  workload_scope                     = var.workload_scope
 }
 
 resource "datadog_monitor" "this" {

@@ -300,7 +300,7 @@ run "cluster_health_rules" {
   }
 
   assert {
-    condition     = output.monitors["node_clock_skew"].query == "min(last_10m):abs(max:ntp.offset{kube_cluster_name:homelab} by {host}) > 0.05"
+    condition     = output.monitors["node_clock_skew"].query == "min(last_30m):abs(max:ntp.offset{kube_cluster_name:homelab} by {host}) > 0.05"
     error_message = "node_clock_skew should read the NTP check's offset."
   }
 

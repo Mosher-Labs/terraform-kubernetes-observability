@@ -4,7 +4,7 @@ output "monitors" {
     for id, r in local.rules : id => {
       draft_status        = r.paused ? "draft" : "published"
       group               = r.group
-      message             = trimspace("${local.message_prefix}\n${r.summary}\n\n${join(" ", var.notification_handles)}")
+      message             = trimspace("${local.message_prefix}\n${r.summary}\n\n${join(" ", concat(var.notification_handles, r.metric ? var.metric_notification_handles : var.service_check_notification_handles))}")
       name                = r.title
       on_missing_data     = r.on_missing_data
       priority            = local.priorities[r.severity]

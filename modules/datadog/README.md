@@ -50,6 +50,18 @@ the Grafana backend's titles.
 `name` sets the Teams and Webex handle names, and defaults to
 `kubernetes-<cluster_name>`.
 
+Slack shows each alert's graph. With a Webex bot, metric monitors attach the
+graph as an image (`@webhook-<name>`), and service checks, which have no graph,
+go to a text-only webhook (`@webhook-<name>-text`). An incoming Webex webhook
+can't attach images, so it sends text for every monitor.
+
+If the Slack channel was already added in Datadog's Slack tile, `apply` fails
+with "Channel is already configured". Import it first:
+
+```bash
+terraform import 'module.datadog_alerts.datadog_integration_slack_channel.this[0]' '<account_name>:#<channel>'
+```
+
 ## How the catalog maps to Datadog
 
 - Each rule is a multi-alert monitor, grouped like the Grafana rule (per pod,
@@ -153,6 +165,7 @@ terraform init -backend=false && terraform test
 | [datadog_integration_slack_channel.this](https://registry.terraform.io/providers/DataDog/datadog/latest/docs/resources/integration_slack_channel) | resource |
 | [datadog_monitor.this](https://registry.terraform.io/providers/DataDog/datadog/latest/docs/resources/monitor) | resource |
 | [datadog_webhook.webex](https://registry.terraform.io/providers/DataDog/datadog/latest/docs/resources/webhook) | resource |
+| [datadog_webhook.webex_text](https://registry.terraform.io/providers/DataDog/datadog/latest/docs/resources/webhook) | resource |
 | [datadog_webhook_custom_variable.webex_token](https://registry.terraform.io/providers/DataDog/datadog/latest/docs/resources/webhook_custom_variable) | resource |
 
 ## Inputs

@@ -330,7 +330,9 @@ locals {
       summary   = "{{host.name}}'s clock is {{value}}s off. Skew breaks TLS, tokens and log ordering; check NTP."
       threshold = 0.05
       title     = "Node clock skewed"
-      window    = "last_10m"
+      # The NTP check runs every 15 minutes, so a shorter window never fills.
+      require_full_window = false
+      window              = "last_30m"
     }
     node_disk_full = {
       group     = "nodes"

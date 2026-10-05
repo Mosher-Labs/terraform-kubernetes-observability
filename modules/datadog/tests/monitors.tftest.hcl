@@ -75,7 +75,7 @@ run "every_channel_becomes_a_handle" {
   }
 
   assert {
-    condition     = datadog_webhook.webex[0].name == "kubernetes-homelab" && jsondecode(datadog_webhook.webex[0].payload).markdown == "**$ALERT_TITLE**\n$TEXT_ONLY_MSG\n\n[View in Datadog]($LINK)" && datadog_webhook.webex[0].custom_headers == null
+    condition     = datadog_webhook.webex[0].name == "kubernetes-homelab" && jsondecode(datadog_webhook.webex[0].payload).markdown == "**$ALERT_TITLE**\n\n$EVENT_MSG" && datadog_webhook.webex[0].custom_headers == null
     error_message = "Webex webhook mode should post {\"markdown\": ...} with no extra headers."
   }
 
@@ -112,7 +112,17 @@ run "webex_bot_posts_with_a_secret_token" {
 
   assert {
     condition     = endswith(nonsensitive(datadog_monitor.this["pod_pending"].message), "@webhook-heimdallr")
-    error_message = "Monitors should notify the Webex webhook handle."
+    error_message = "Metric monitors should notify the Webex webhook that attaches the graph."
+  }
+
+  assert {
+    condition     = jsondecode(datadog_webhook.webex[0].payload).files == ["$SNAPSHOT"] && !can(jsondecode(datadog_webhook.webex_text[0].payload).files)
+    error_message = "The graph webhook should attach $SNAPSHOT, and the text-only one should attach nothing."
+  }
+
+  assert {
+    condition     = endswith(nonsensitive(datadog_monitor.this["scrape_target_down"].message), "@webhook-heimdallr-text") && !strcontains(nonsensitive(datadog_monitor.this["scrape_target_down"].message), "@webhook-heimdallr ")
+    error_message = "Service checks have no graph, so they should notify only the text-only Webex webhook."
   }
 }
 
