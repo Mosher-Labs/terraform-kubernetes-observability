@@ -50,13 +50,13 @@ run "datadog" {
   }
 
   assert {
-    condition     = length(output.rules) == 62 && length(output.known_rule_ids) == 62
-    error_message = "Expected every rule that has a Datadog block, 60 shared with Grafana plus agent_not_reporting and cluster_not_reporting."
+    condition     = length(output.rules) == 64 && length(output.known_rule_ids) == 64
+    error_message = "Expected every rule that has a Datadog block, 62 shared with Grafana plus agent_not_reporting and cluster_not_reporting."
   }
 
   assert {
-    condition     = length(output.skipped_rules) == 10 && alltrue([for reason in values(output.skipped_rules) : reason != ""])
-    error_message = "Datadog should skip 10 rules, each with a reason."
+    condition     = length(output.skipped_rules) == 8 && alltrue([for reason in values(output.skipped_rules) : reason != ""])
+    error_message = "Datadog should skip 8 rules, each with a reason."
   }
 }
 
@@ -111,6 +111,8 @@ run "backends_differ_only_by_documented_overrides" {
       postgres_down                         = { datadog = ["threshold"] }
       redis_down                            = { datadog = ["threshold"] }
       scrape_target_down                    = { datadog = ["threshold"] }
+      x509_certificate_expiring_critical    = { datadog = ["threshold"] }
+      x509_certificate_expiring_warning     = { datadog = ["threshold"] }
     })
     error_message = "A backend block replaces a shared field that isn't in this list: ${jsonencode(output.backend_overrides)}."
   }

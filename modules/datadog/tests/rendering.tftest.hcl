@@ -13,8 +13,8 @@ run "catalog_rules_are_mapped_or_skipped" {
   }
 
   assert {
-    condition     = length(module.catalog.known_rule_ids) == 62 && length(output.skipped_rules) == 10
-    error_message = "Expected 60 mapped catalog rules plus agent_not_reporting and cluster_not_reporting, and 10 skipped."
+    condition     = length(module.catalog.known_rule_ids) == 64 && length(output.skipped_rules) == 8
+    error_message = "Expected 62 mapped catalog rules plus agent_not_reporting and cluster_not_reporting, and 8 skipped."
   }
 
   assert {
@@ -23,8 +23,8 @@ run "catalog_rules_are_mapped_or_skipped" {
   }
 
   assert {
-    condition     = length(output.rule_ids) == 37
-    error_message = "By default, expected the 35 core rules without control-plane, APM or backing-service rules, plus agent_not_reporting and cluster_not_reporting."
+    condition     = length(output.rule_ids) == 39
+    error_message = "By default, expected the 37 core rules without control-plane, APM or backing-service rules, plus agent_not_reporting and cluster_not_reporting."
   }
 
   assert {
@@ -80,6 +80,16 @@ run "monitors_render_queries_thresholds_and_handles" {
   assert {
     condition     = local.monitors["scrape_target_down"].type == "service check" && local.monitors["scrape_target_down"].query == "\"kubernetes.kubelet.check\".over(\"kube_cluster_name:homelab\").by(\"host\").last(41).count_by_status()" && local.monitors["scrape_target_down"].threshold == 40
     error_message = "scrape_target_down should be a service check on the kubelet's health, alerting after 40 failed runs."
+  }
+
+  assert {
+    condition     = local.monitors["x509_certificate_expiring_warning"].query == "min(last_1h):min:x509.cert_expires_in_seconds{kube_cluster_name:homelab} by {filepath,subject_cn} < 2592000" && local.monitors["x509_certificate_expiring_warning"].threshold == 2592000
+    error_message = "x509_certificate_expiring_warning should alert below 30 days, in seconds, on the OpenMetrics check's metric, with no default_zero() (a gap must not fire)."
+  }
+
+  assert {
+    condition     = local.monitors["x509_certificate_expiring_critical"].query == "min(last_1h):min:x509.cert_expires_in_seconds{kube_cluster_name:homelab} by {filepath,subject_cn} < 604800" && local.monitors["x509_certificate_expiring_critical"].threshold == 604800 && local.monitors["x509_certificate_expiring_critical"].priority == 1
+    error_message = "x509_certificate_expiring_critical should alert below 7 days, in seconds, at priority 1."
   }
 
   assert {
@@ -190,7 +200,7 @@ run "apm_backing_and_control_plane_rules" {
   }
 
   assert {
-    condition     = length(output.rule_ids) == 37 + 3 + 6 + 4 + 3
+    condition     = length(output.rule_ids) == 39 + 3 + 6 + 4 + 3
     error_message = "Expected the default rules plus the 3 control-plane rules, the 6 APM rules, 4 Postgres and 3 Redis rules."
   }
 

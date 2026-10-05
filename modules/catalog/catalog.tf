@@ -825,12 +825,19 @@ locals {
     # ── Certificates (x509-certificate-exporter) ──────────────────────────
     # These read x509_cert_not_after from x509-certificate-exporter, for
     # certificates on the nodes' disks, such as k3s's (where the kubelet's
-    # certificate metrics don't exist). With no exporter they have no data and
+    # certificate metrics don't exist). Datadog reads the exporter's
+    # x509_cert_expires_in_seconds through an Agent OpenMetrics check, which
+    # modules/datadog's README sets up. With no exporter they have no data and
     # stay quiet. k3s renews a certificate only when it starts within 90 days
     # of expiry, so warn with a month to spare, then page a week out.
     x509_certificate_expiring_critical = {
       datadog = {
-        skip = "Needs x509-certificate-exporter scraped by an Agent OpenMetrics check, which isn't set up. Tracked in an issue."
+        query   = "min($${window}):min:x509.cert_expires_in_seconds{$${scope}} by {filepath,subject_cn}"
+        summary = "The certificate {{subject_cn.name}} ({{filepath.name}}) expires in {{value}} seconds. Restart k3s to renew it, or replace the certificate."
+        # A query can't subtract time(), so this reads the exporter's relative
+        # metric, in seconds, instead of days.
+        threshold = 604800
+        window    = "last_1h"
       }
       grafana = {
         expr           = "min by (filepath, subject_CN) ((x509_cert_not_after - time()) / 86400)"
@@ -846,7 +853,12 @@ locals {
     }
     x509_certificate_expiring_warning = {
       datadog = {
-        skip = "Needs x509-certificate-exporter scraped by an Agent OpenMetrics check, which isn't set up. Tracked in an issue."
+        query   = "min($${window}):min:x509.cert_expires_in_seconds{$${scope}} by {filepath,subject_cn}"
+        summary = "The certificate {{subject_cn.name}} ({{filepath.name}}) expires in {{value}} seconds. Restart k3s to renew it, or replace the certificate."
+        # A query can't subtract time(), so this reads the exporter's relative
+        # metric, in seconds, instead of days.
+        threshold = 2592000
+        window    = "last_1h"
       }
       grafana = {
         expr           = "min by (filepath, subject_CN) ((x509_cert_not_after - time()) / 86400)"
