@@ -397,3 +397,27 @@ run "empty_scopes_leave_no_selector" {
     error_message = "With no backing_services.scope, a backing-service rule should have no empty selector."
   }
 }
+
+run "datadog_certificate_text_follows_the_threshold" {
+  command = plan
+
+  module {
+    source = "./modules/catalog"
+  }
+
+  variables {
+    catalog       = "datadog"
+    cluster_scope = "kube_cluster_name:homelab"
+    overrides     = { x509_certificate_expiring_warning = { threshold = 1209600 } }
+  }
+
+  assert {
+    condition     = strcontains(output.rules.x509_certificate_expiring_critical.summary, "expires in less than 7 days.") && strcontains(output.rules.x509_certificate_expiring_warning.summary, "expires in less than 14 days.")
+    error_message = "The Datadog certificate text should give the threshold in days, and follow an override (the warning is raised to 14 days here)."
+  }
+
+  assert {
+    condition     = !strcontains(output.rules.x509_certificate_expiring_warning.summary, "seconds")
+    error_message = "The certificate text should not report seconds."
+  }
+}

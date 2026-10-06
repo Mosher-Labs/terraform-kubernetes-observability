@@ -833,7 +833,7 @@ locals {
     x509_certificate_expiring_critical = {
       datadog = {
         query   = "min($${window}):min:x509.cert_expires_in_seconds{$${scope}} by {filepath,subject_cn}"
-        summary = "The certificate {{subject_cn.name}} ({{filepath.name}}) expires in {{value}} seconds. Restart k3s to renew it, or replace the certificate."
+        summary = "The certificate {{subject_cn.name}} ({{filepath.name}}) expires in less than $${threshold_days} days. Restart k3s to renew it, or replace the certificate."
         # A query can't subtract time(), so this reads the exporter's relative
         # metric, in seconds, instead of days.
         threshold = 604800
@@ -854,7 +854,7 @@ locals {
     x509_certificate_expiring_warning = {
       datadog = {
         query   = "min($${window}):min:x509.cert_expires_in_seconds{$${scope}} by {filepath,subject_cn}"
-        summary = "The certificate {{subject_cn.name}} ({{filepath.name}}) expires in {{value}} seconds. Restart k3s to renew it, or replace the certificate."
+        summary = "The certificate {{subject_cn.name}} ({{filepath.name}}) expires in less than $${threshold_days} days. Restart k3s to renew it, or replace the certificate."
         # A query can't subtract time(), so this reads the exporter's relative
         # metric, in seconds, instead of days.
         threshold = 2592000
