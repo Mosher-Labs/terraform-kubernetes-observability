@@ -45,7 +45,7 @@ Queries and text in the catalog are templates, filled in with
 (from `apm`), `sel`, `asel` and `bsel` (the workload, APM and backing-service
 scopes as `{scope}`, or nothing when empty), `sel_more`, `asel_more` and
 `bsel_more` (the same as `,scope`, for braces that already hold a matcher),
-`tags`, and per rule `scope`, `window` and `last`. `locals.tf` explains each.
+`tags`, and per rule `scope`, `window`, `last` and `threshold_days`. `locals.tf` explains each.
 
 A Datadog `query` stops before its comparison: the renderer adds the operator
 and the threshold. A service check's query is complete, and its `threshold`

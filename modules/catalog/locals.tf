@@ -114,6 +114,8 @@ locals {
   #   window         the window after overrides, or nothing
   #   last           the threshold after overrides plus one: how many check
   #                  runs a service check looks back over
+  #   threshold_days the threshold after overrides, divided by 86400, for a
+  #                  rule whose threshold is in seconds ("less than 30 days")
   template_vars = {
     apm_scope     = var.apm.scope == "" ? "*" : var.apm.scope
     asel          = var.apm.scope == "" ? "" : "{${var.apm.scope}}"
@@ -135,9 +137,10 @@ locals {
   rules = {
     for id, r in local.with_overrides : id => merge(r, {
       for field in ["expr", "query", "subject", "summary"] : field => templatestring(r[field], merge(local.template_vars, {
-        last   = tostring(r.threshold + 1)
-        scope  = local.datadog_scope[id]
-        window = try(r.window, null) == null ? "" : r.window
+        last           = tostring(r.threshold + 1)
+        scope          = local.datadog_scope[id]
+        threshold_days = format("%g", r.threshold / 86400)
+        window         = try(r.window, null) == null ? "" : r.window
       })) if contains(keys(r), field)
     })
     if !contains(var.disabled_rules, id) && (try(r.requires, null) == null ? true : local.enabled[r.requires])
