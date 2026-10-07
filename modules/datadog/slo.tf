@@ -22,6 +22,7 @@ resource "datadog_service_level_objective" "this" {
 resource "datadog_monitor" "slo" {
   for_each = local.slo_monitors
 
+  draft_status      = each.value.draft_status
   include_tags      = true
   message           = each.value.message
   name              = each.value.name

@@ -78,6 +78,33 @@ hours`, and `window_days` is 7, 30 or 90 (Datadog's choices).
 - **Datadog:** `modules/datadog` creates a metric SLO and a `slo alert` monitor
   for each tier, and Datadog evaluates both windows itself.
 
+## What each backend gets
+
+| | Grafana | Datadog |
+| --- | --- | --- |
+| SLO definition | `slos` entry with a `grafana` block | the same entry, with a `datadog` block |
+| Burn-rate alerts | `custom_rules` for `modules/alerts`, three tiers | `slo alert` monitors in `modules/datadog`, three tiers |
+| Same thresholds, severities and text | yes | yes |
+| SLO view with the error budget left | a dashboard row per SLO in `modules/dashboards` (SLI, budget left, burn rates). Grafana without the Cloud SLO app has no SLO object | the metric SLO, which Datadog shows with its budget |
+| `overrides`: threshold, severity, paused | `modules/alerts` | `modules/datadog` |
+| `disabled_rules` | yes | yes |
+
+For the Grafana dashboard rows, pass `dashboard_slos` to `modules/dashboards`
+(or to the root module as `dashboards.slos`):
+
+```hcl
+module "observability" {
+  # ...
+  alerts     = { custom_rules = module.slo.custom_rules }
+  dashboards = { slos = module.slo.dashboard_slos }
+}
+```
+
+The SLI and the budget left are computed over `window_days`, so Prometheus
+needs that much data. Datadog keeps its metrics for 15 months. With a 14-day
+Prometheus retention, a 30-day SLO shows the budget for the data it has, so
+raise the retention to match the window.
+
 ## Writing the queries
 
 - Define events at the input: valid events are everything the service is
@@ -119,5 +146,6 @@ Templates for the SLO document and the error budget policy are in
 | ---- | ----------- |
 | burn\_rates | The burn-rate threshold of each tier for each SLO, for the SLO document. |
 | custom\_rules | Burn-rate alert rules for the SLOs with a `grafana` block, in the shape `modules/alerts` takes as `custom_rules`, keyed `<slo>_burn_<tier>`. |
+| dashboard\_slos | The SLOs with a `grafana` block, in the shape `modules/dashboards` takes as `slos`: the SLI, the error budget left, and the burn rates, as PromQL. |
 | datadog\_slos | The SLOs with a `datadog` block, in the shape `modules/datadog` takes as `slos`. |
 <!-- END_TF_DOCS -->

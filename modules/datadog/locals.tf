@@ -115,15 +115,17 @@ locals {
   slo_monitors_all = merge([
     for slo_id, slo in var.slos : {
       for tier, t in slo.tiers : "${slo_id}_burn_${tier}" => {
-        message = trimspace("${local.message_prefix}\n${t.summary}\n\n${join(" ", concat(local.handles, local.service_check_handles))}")
-        name    = "[${var.cluster_name}] ${slo.name}: ${tier} error budget burn"
+        draft_status = coalesce(try(var.overrides["${slo_id}_burn_${tier}"].paused, null), false) ? "draft" : "published"
+        message      = trimspace("${local.message_prefix}\n${t.summary}\n\n${join(" ", concat(local.handles, local.service_check_handles))}")
+        name         = "[${var.cluster_name}] ${slo.name}: ${tier} error budget burn"
         query = format("burn_rate(\"%s\").over(\"%s\").long_window(\"%s\").short_window(\"%s\") > %s",
-          datadog_service_level_objective.this[slo_id].id, slo.timeframe, t.long_window, t.short_window, t.burn_rate,
+          datadog_service_level_objective.this[slo_id].id, slo.timeframe, t.long_window, t.short_window,
+          coalesce(try(var.overrides["${slo_id}_burn_${tier}"].threshold, null), t.burn_rate),
         )
-        severity  = t.severity
+        severity  = coalesce(try(var.overrides["${slo_id}_burn_${tier}"].severity, null), t.severity)
         slo_id    = slo_id
-        tags      = concat(var.tags, ["cluster:${var.cluster_name}", "group:${slo.group}", "rule_id:${slo_id}_burn_${tier}", "severity:${t.severity}", "slo:${slo_id}"])
-        threshold = t.burn_rate
+        tags      = concat(var.tags, ["cluster:${var.cluster_name}", "group:${slo.group}", "rule_id:${slo_id}_burn_${tier}", "severity:${coalesce(try(var.overrides["${slo_id}_burn_${tier}"].severity, null), t.severity)}", "slo:${slo_id}"])
+        threshold = coalesce(try(var.overrides["${slo_id}_burn_${tier}"].threshold, null), t.burn_rate)
       }
     }
   ]...)

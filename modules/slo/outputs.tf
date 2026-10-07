@@ -8,6 +8,11 @@ output "custom_rules" {
   value       = local.rules
 }
 
+output "dashboard_slos" {
+  description = "The SLOs with a `grafana` block, in the shape `modules/dashboards` takes as `slos`: the SLI, the error budget left, and the burn rates, as PromQL."
+  value       = local.dashboard_slos
+}
+
 output "datadog_slos" {
   description = "The SLOs with a `datadog` block, in the shape `modules/datadog` takes as `slos`."
   value       = local.datadog_slos

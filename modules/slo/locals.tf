@@ -103,4 +103,20 @@ locals {
       }
     } if slo.datadog != null
   }
+
+  # What modules/dashboards needs: the SLI and the budget left over the SLO
+  # window, and each burn rate the alerts use, so the dashboard shows the same
+  # numbers the alerts act on.
+  dashboard_slos = {
+    for id, slo in var.slos : id => {
+      burn_rates = { for window in ["1h", "6h", "1d"] : window => local.burn[id][window] }
+      # 1 minus the bad fraction, and the share of the budget not yet spent. The
+      # window is the SLO's own, so Prometheus needs that much data.
+      budget_remaining = "1 - ((${templatestring(slo.grafana.error_ratio, { window = "${slo.window_days}d" })}) / ${local.budget[id]})"
+      sli              = "1 - (${templatestring(slo.grafana.error_ratio, { window = "${slo.window_days}d" })})"
+      target           = slo.target
+      title            = slo.title
+      window_days      = slo.window_days
+    } if slo.grafana != null
+  }
 }

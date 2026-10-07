@@ -76,3 +76,23 @@ run "disabled_rules_skips_a_tier" {
     error_message = "A disabled SLO rule should have no monitor."
   }
 }
+
+run "overrides_apply_to_slo_monitors" {
+  command = apply
+
+  variables {
+    overrides = {
+      dns_burn_fast = { paused = true, severity = "warning", threshold = 10 }
+    }
+  }
+
+  assert {
+    condition     = datadog_monitor.slo["dns_burn_fast"].draft_status == "draft" && datadog_monitor.slo["dns_burn_fast"].priority == "3" && datadog_monitor.slo["dns_burn_fast"].monitor_thresholds[0].critical == "10" && endswith(datadog_monitor.slo["dns_burn_fast"].query, "> 10")
+    error_message = "A paused, lowered or re-prioritised SLO rule should change its monitor, as it does on Grafana."
+  }
+
+  assert {
+    condition     = datadog_monitor.slo["dns_burn_slow"].draft_status == "published" && endswith(datadog_monitor.slo["dns_burn_slow"].query, "> 3")
+    error_message = "Rules without an override should not change."
+  }
+}

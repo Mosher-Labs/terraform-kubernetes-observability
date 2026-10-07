@@ -183,6 +183,36 @@ run "tiers_can_be_limited_for_quiet_services" {
   }
 }
 
+run "dashboard_gets_the_same_queries_the_alerts_use" {
+  command = plan
+
+  module {
+    source = "./modules/slo"
+  }
+
+  variables {
+    slos = {
+      dns = {
+        grafana = {
+          error_ratio = "1 - avg_over_time(up[$${window}])"
+        }
+        target = 0.999
+        title  = "DNS replies"
+      }
+    }
+  }
+
+  assert {
+    condition     = output.dashboard_slos["dns"].sli == "1 - (1 - avg_over_time(up[30d]))" && output.dashboard_slos["dns"].budget_remaining == "1 - ((1 - avg_over_time(up[30d])) / 0.001)"
+    error_message = "The SLI and the budget left should be computed over the 30 day SLO window."
+  }
+
+  assert {
+    condition     = output.dashboard_slos["dns"].burn_rates["1h"] == "((1 - avg_over_time(up[1h])) / 0.001)" && strcontains(output.custom_rules["dns_burn_fast"].expr, output.dashboard_slos["dns"].burn_rates["1h"])
+    error_message = "The dashboard's 1h burn rate should be the expression the fast alert uses."
+  }
+}
+
 run "rejects_a_target_of_one_hundred_percent" {
   command = plan
 
