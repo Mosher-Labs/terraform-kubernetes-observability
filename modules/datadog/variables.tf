@@ -123,7 +123,7 @@ variable "notifications" {
 
 variable "overrides" {
   default     = {}
-  description = "Per-rule changes, keyed by rule ID: threshold, severity, window (the evaluation window, such as \"last_15m\", in place of Grafana's pending period), or a paused flag, which publishes the monitor as a draft that sends no notifications."
+  description = "Per-rule changes, keyed by rule ID (catalog rules, and SLO burn-rate rules such as `dns_burn_fast`): threshold, severity, window (the evaluation window, such as \"last_15m\", in place of Grafana's pending period), or a paused flag, which publishes the monitor as a draft that sends no notifications."
   type = map(object({
     paused    = optional(bool)
     severity  = optional(string)
@@ -150,6 +150,26 @@ variable "renotify_interval_minutes" {
     info     = optional(number, 0)
     warning  = optional(number, 240)
   })
+}
+
+variable "slos" {
+  default     = {}
+  description = "SLOs to create, with a burn-rate monitor for each tier. Pass `module.slo.datadog_slos` from `modules/slo`, which also renders the Grafana rules from the same SLOs."
+  type = map(object({
+    denominator = string
+    group       = string
+    name        = string
+    numerator   = string
+    target      = number
+    timeframe   = string
+    tiers = map(object({
+      burn_rate    = number
+      long_window  = string
+      severity     = string
+      short_window = string
+      summary      = string
+    }))
+  }))
 }
 
 variable "tags" {

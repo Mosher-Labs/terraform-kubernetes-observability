@@ -36,6 +36,7 @@ module "dashboards" {
   loki_datasource_uid       = var.dashboards.loki_datasource_uid
   prometheus_datasource_uid = var.prometheus_datasource_uid
   refresh                   = var.dashboards.refresh
+  slos                      = var.dashboards.slos
 }
 
 module "notifications" {

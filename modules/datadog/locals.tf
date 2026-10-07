@@ -97,7 +97,7 @@ locals {
 
   service_check = { for id, r in module.catalog.rules : id => try(r.type, "") == "service check" }
 
-  unknown_ids = setsubtract(setunion(var.disabled_rules, keys(var.overrides)), module.catalog.known_rule_ids)
+  unknown_ids = setsubtract(setunion(var.disabled_rules, keys(var.overrides)), setunion(module.catalog.known_rule_ids, keys(local.slo_monitors_all)))
 
   # A multi-alert group whose object is deleted (a Deployment, a pod, a PVC)
   # stops reporting, and Datadog keeps the group in its last state, so an
@@ -108,4 +108,27 @@ locals {
   zero_filled = {
     for id, r in module.catalog.rules : id => r.operator == "gt" && try(r.default_zero, true) && !startswith(local.query_parts[id][1], "default_zero(") if !local.service_check[id]
   }
+
+  # One burn-rate monitor per SLO tier, keyed `<slo>_burn_<tier>` like the
+  # Grafana rules. The query refers to the SLO resource, so the monitors are
+  # created after it.
+  slo_monitors_all = merge([
+    for slo_id, slo in var.slos : {
+      for tier, t in slo.tiers : "${slo_id}_burn_${tier}" => {
+        draft_status = coalesce(try(var.overrides["${slo_id}_burn_${tier}"].paused, null), false) ? "draft" : "published"
+        message      = trimspace("${local.message_prefix}\n${t.summary}\n\n${join(" ", concat(local.handles, local.service_check_handles))}")
+        name         = "[${var.cluster_name}] ${slo.name}: ${tier} error budget burn"
+        query = format("burn_rate(\"%s\").over(\"%s\").long_window(\"%s\").short_window(\"%s\") > %s",
+          datadog_service_level_objective.this[slo_id].id, slo.timeframe, t.long_window, t.short_window,
+          coalesce(try(var.overrides["${slo_id}_burn_${tier}"].threshold, null), t.burn_rate),
+        )
+        severity  = coalesce(try(var.overrides["${slo_id}_burn_${tier}"].severity, null), t.severity)
+        slo_id    = slo_id
+        tags      = concat(var.tags, ["cluster:${var.cluster_name}", "group:${slo.group}", "rule_id:${slo_id}_burn_${tier}", "severity:${coalesce(try(var.overrides["${slo_id}_burn_${tier}"].severity, null), t.severity)}", "slo:${slo_id}"])
+        threshold = coalesce(try(var.overrides["${slo_id}_burn_${tier}"].threshold, null), t.burn_rate)
+      }
+    }
+  ]...)
+
+  slo_monitors = { for id, m in local.slo_monitors_all : id => m if !contains(var.disabled_rules, id) }
 }

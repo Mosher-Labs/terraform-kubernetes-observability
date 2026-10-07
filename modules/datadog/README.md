@@ -64,6 +64,16 @@ with "Channel is already configured". Import it first:
 terraform import 'module.datadog_alerts.datadog_integration_slack_channel.this[0]' '<account_name>:#<channel>'
 ```
 
+## SLOs
+
+`slos` takes `module.slo.datadog_slos` from [modules/slo](../slo/README.md),
+which renders the Grafana burn-rate rules from the same SLOs. Each SLO becomes
+a metric SLO (`good` over `total`) and one `slo alert` monitor for each tier:
+14.4x over 1h and 5m, 6x over 6h and 30m, and 3x over 1d and 2h. Datadog
+evaluates both windows itself. Monitors notify the same handles as the catalog
+monitors, as text with no graph. `disabled_rules` accepts the monitor IDs,
+which are `<slo>_burn_<tier>`.
+
 ## How the catalog maps to Datadog
 
 - Each rule is a multi-alert monitor, grouped like the Grafana rule (per pod,
@@ -225,7 +235,9 @@ terraform init -backend=false && terraform test
 | ---- | ---- |
 | [datadog_integration_ms_teams_workflows_webhook_handle.this](https://registry.terraform.io/providers/DataDog/datadog/latest/docs/resources/integration_ms_teams_workflows_webhook_handle) | resource |
 | [datadog_integration_slack_channel.this](https://registry.terraform.io/providers/DataDog/datadog/latest/docs/resources/integration_slack_channel) | resource |
+| [datadog_monitor.slo](https://registry.terraform.io/providers/DataDog/datadog/latest/docs/resources/monitor) | resource |
 | [datadog_monitor.this](https://registry.terraform.io/providers/DataDog/datadog/latest/docs/resources/monitor) | resource |
+| [datadog_service_level_objective.this](https://registry.terraform.io/providers/DataDog/datadog/latest/docs/resources/service_level_objective) | resource |
 | [datadog_webhook.webex](https://registry.terraform.io/providers/DataDog/datadog/latest/docs/resources/webhook) | resource |
 | [datadog_webhook.webex_text](https://registry.terraform.io/providers/DataDog/datadog/latest/docs/resources/webhook) | resource |
 | [datadog_webhook_custom_variable.webex_token](https://registry.terraform.io/providers/DataDog/datadog/latest/docs/resources/webhook_custom_variable) | resource |
@@ -242,8 +254,9 @@ terraform init -backend=false && terraform test
 | disabled\_rules | IDs of rules to leave out, such as `node_network_errors`. The same IDs as modules/alerts. | `set(string)` | `[]` | no |
 | notification\_handles | Extra Datadog @-handles every monitor notifies, on top of those from `notifications`, such as `@pagerduty-oncall`. | `list(string)` | `[]` | no |
 | notifications | Notification channels, created in Datadog and added to every monitor as @-handles. Turn on any combination by setting them; `notification_handles` adds raw handles on top. - `email`: addresses, notified as `@<address>`. - `slack`: a channel in a Slack workspace already connected to Datadog (install the Datadog app from Datadog's Slack integration tile first). `account_name` is the workspace name in that tile. - `teams`: a Microsoft Teams Workflows webhook `url`, as a Datadog Teams handle. - `webex`: an incoming `webhook_url`, or a bot `token` and `room_id`, sent through a Datadog webhook. Datadog has no Webex integration. `name` sets the handle name; it defaults to `kubernetes-<cluster_name>`. | ```object({ email = optional(object({ addresses = list(string) })) slack = optional(object({ account_name = string channel = string })) teams = optional(object({ name = optional(string) url = string })) webex = optional(object({ api_url = optional(string, "https://webexapis.com/v1/messages") name = optional(string) room_id = optional(string) token = optional(string) webhook_url = optional(string) })) })``` | `{}` | no |
-| overrides | Per-rule changes, keyed by rule ID: threshold, severity, window (the evaluation window, such as "last\_15m", in place of Grafana's pending period), or a paused flag, which publishes the monitor as a draft that sends no notifications. | ```map(object({ paused = optional(bool) severity = optional(string) threshold = optional(number) window = optional(string) }))``` | `{}` | no |
+| overrides | Per-rule changes, keyed by rule ID (catalog rules, and SLO burn-rate rules such as `dns_burn_fast`): threshold, severity, window (the evaluation window, such as "last\_15m", in place of Grafana's pending period), or a paused flag, which publishes the monitor as a draft that sends no notifications. | ```map(object({ paused = optional(bool) severity = optional(string) threshold = optional(number) window = optional(string) }))``` | `{}` | no |
 | renotify\_interval\_minutes | Minutes before a monitor that is still alerting notifies again, per severity. 0 notifies once. Matches the Grafana notification policy's repeat intervals by default. | ```object({ critical = optional(number, 60) info = optional(number, 0) warning = optional(number, 240) })``` | `{}` | no |
+| slos | SLOs to create, with a burn-rate monitor for each tier. Pass `module.slo.datadog_slos` from `modules/slo`, which also renders the Grafana rules from the same SLOs. | ```map(object({ denominator = string group = string name = string numerator = string target = number timeframe = string tiers = map(object({ burn_rate = number long_window = string severity = string short_window = string summary = string })) }))``` | `{}` | no |
 | tags | Extra tags on every monitor, such as `team:platform`. | `list(string)` | `[]` | no |
 | workload\_scope | Datadog tag filter added to every workload rule, to scope them. For example `NOT kube_namespace:kube-system`. Empty means all namespaces. | `string` | `""` | no |
 
@@ -255,4 +268,6 @@ terraform init -backend=false && terraform test
 | monitors | The monitors as created: name, query, threshold, window, severity and group, keyed by rule ID. |
 | rule\_ids | IDs of the monitors that were created, after disabled\_rules is applied. |
 | skipped\_rules | Catalog rules that have no Datadog monitor, with the reason and what to use instead. |
+| slo\_ids | Datadog SLO IDs, keyed by SLO ID. |
+| slo\_monitor\_ids | Datadog burn-rate monitor IDs, keyed `<slo>_burn_<tier>`. |
 <!-- END_TF_DOCS -->

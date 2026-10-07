@@ -26,3 +26,13 @@ output "skipped_rules" {
   description = "Catalog rules that have no Datadog monitor, with the reason and what to use instead."
   value       = module.catalog.skipped_rules
 }
+
+output "slo_ids" {
+  description = "Datadog SLO IDs, keyed by SLO ID."
+  value       = { for id, s in datadog_service_level_objective.this : id => s.id }
+}
+
+output "slo_monitor_ids" {
+  description = "Datadog burn-rate monitor IDs, keyed `<slo>_burn_<tier>`."
+  value       = { for id, m in datadog_monitor.slo : id => m.id }
+}

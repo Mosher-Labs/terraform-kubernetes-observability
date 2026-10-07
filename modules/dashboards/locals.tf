@@ -326,6 +326,60 @@ locals {
         }
       },
     ], 0, local.loki == null ? 0 : 2),
+    # One row per SLO, the same numbers the burn-rate alerts act on.
+    flatten([
+      for i, id in sort(keys(var.slos)) : [
+        { kind = "row", panel = { gridPos = { h = 1, w = 24, x = 0, y = 100 + i * 9 }, title = "SLO: ${var.slos[id].title} (${format("%g", var.slos[id].target * 100)}% over ${var.slos[id].window_days}d)" } },
+        {
+          kind = "stat"
+          panel = {
+            fieldConfig = {
+              defaults = {
+                decimals   = 3
+                thresholds = { mode = "absolute", steps = [{ color = "red", value = null }, { color = "green", value = var.slos[id].target }] }
+                unit       = "percentunit"
+              }
+              overrides = []
+            }
+            gridPos = { h = 8, w = 4, x = 0, y = 101 + i * 9 }
+            targets = [{ datasource = local.prometheus, expr = var.slos[id].sli, instant = true, legendFormat = "", refId = "A" }]
+            title   = "SLI (${var.slos[id].window_days}d)"
+          }
+        },
+        {
+          kind = "stat"
+          panel = {
+            fieldConfig = {
+              defaults = {
+                decimals   = 1
+                thresholds = { mode = "absolute", steps = [{ color = "red", value = null }, { color = "orange", value = 0.25 }, { color = "green", value = 0.5 }] }
+                unit       = "percentunit"
+              }
+              overrides = []
+            }
+            gridPos = { h = 8, w = 4, x = 4, y = 101 + i * 9 }
+            targets = [{ datasource = local.prometheus, expr = var.slos[id].budget_remaining, instant = true, legendFormat = "", refId = "A" }]
+            title   = "Error budget left"
+          }
+        },
+        {
+          kind = "timeseries"
+          panel = {
+            fieldConfig = {
+              defaults = {
+                custom     = { thresholdsStyle = { mode = "line" } }
+                thresholds = { mode = "absolute", steps = [{ color = "transparent", value = null }, { color = "red", value = 14.4 }] }
+                unit       = "none"
+              }
+              overrides = []
+            }
+            gridPos = { h = 8, w = 16, x = 8, y = 101 + i * 9 }
+            targets = [for j, w in sort(keys(var.slos[id].burn_rates)) : { datasource = local.prometheus, expr = var.slos[id].burn_rates[w], legendFormat = "burn rate ${w}", range = true, refId = substr("ABC", j, 1) }]
+            title   = "Burn rate (1 uses the budget exactly over the window; fast alerts at 14.4)"
+          }
+        },
+      ]
+    ]),
   )
 
   prometheus = { type = "prometheus", uid = var.prometheus_datasource_uid }
