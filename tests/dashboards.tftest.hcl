@@ -115,7 +115,7 @@ run "services_row_uses_the_apm_metric" {
   }
 }
 
-run "slo_rows_show_the_sli_budget_and_burn_rates" {
+run "slo_dashboard_shows_the_sli_budget_and_burn_rates" {
   command = plan
 
   module {
@@ -132,26 +132,49 @@ run "slo_rows_show_the_sli_budget_and_burn_rates" {
         title            = "DNS replies"
         window_days      = 30
       }
+      sync = {
+        budget_remaining = "1 - ((bad7) / 0.01)"
+        burn_rates       = { "1h" = "s1h", "1d" = "s1d", "6h" = "s6h" }
+        sli              = "1 - (bad7)"
+        target           = 0.99
+        title            = "Sync imports"
+        window_days      = 7
+      }
     }
   }
 
   assert {
-    condition     = length([for p in jsondecode(grafana_dashboard.overview.config_json).panels : p if p.type == "row" && p.title == "SLO: DNS replies (99.9% over 30d)"]) == 1
-    error_message = "Each SLO should get a row titled with its target and window."
+    condition     = jsondecode(grafana_dashboard.slos[0].config_json).uid == "slos-home-lab" && jsondecode(grafana_dashboard.slos[0].config_json).title == "SLOs (Home Lab)"
+    error_message = "The SLO dashboard should have its own UID and title."
   }
 
   assert {
-    condition     = length([for p in jsondecode(grafana_dashboard.overview.config_json).panels : p if p.title == "SLI (30d)" && p.targets[0].expr == "1 - (bad30)"]) == 1 && length([for p in jsondecode(grafana_dashboard.overview.config_json).panels : p if p.title == "Error budget left" && p.targets[0].expr == "1 - ((bad30) / 0.001)"]) == 1
+    condition     = [for p in jsondecode(grafana_dashboard.slos[0].config_json).panels : p.title if p.type == "row"] == ["SLO: DNS replies (99.9% over 30d)", "SLO: Sync imports (99% over 7d)"]
+    error_message = "Every SLO should get a row on the one dashboard, titled with its target and window."
+  }
+
+  assert {
+    condition     = length([for p in jsondecode(grafana_dashboard.slos[0].config_json).panels : p if p.title == "SLI (30d)" && p.targets[0].expr == "1 - (bad30)"]) == 1 && length([for p in jsondecode(grafana_dashboard.slos[0].config_json).panels : p if p.title == "Error budget left" && p.targets[0].expr == "1 - ((bad30) / 0.001)"]) == 1
     error_message = "The SLI and budget panels should use the SLO's queries."
   }
 
   assert {
-    condition     = [for t in [for p in jsondecode(grafana_dashboard.overview.config_json).panels : p if startswith(p.title, "Burn rate")][0].targets : t.expr] == ["burn1d", "burn1h", "burn6h"]
+    condition     = [for t in [for p in jsondecode(grafana_dashboard.slos[0].config_json).panels : p if startswith(p.title, "Burn rate")][0].targets : t.expr] == ["burn1d", "burn1h", "burn6h"]
     error_message = "The burn rate panel should plot each window, in key order: 1d, 1h, 6h."
+  }
+
+  assert {
+    condition     = length([for p in jsondecode(grafana_dashboard.slos[0].config_json).panels : p if p.type == "alertlist" && p.options.alertName == "error budget burn"]) == 1
+    error_message = "The dashboard should list the firing SLO alerts."
+  }
+
+  assert {
+    condition     = length([for p in jsondecode(grafana_dashboard.overview.config_json).panels : p if startswith(p.title, "SLO")]) == 0
+    error_message = "The overview dashboard should not carry SLO rows."
   }
 }
 
-run "no_slo_rows_without_slos" {
+run "no_slo_dashboard_without_slos" {
   command = plan
 
   module {
@@ -159,7 +182,7 @@ run "no_slo_rows_without_slos" {
   }
 
   assert {
-    condition     = length([for p in jsondecode(grafana_dashboard.overview.config_json).panels : p if startswith(p.title, "SLO:")]) == 0
-    error_message = "Without slos there should be no SLO rows."
+    condition     = length(grafana_dashboard.slos) == 0
+    error_message = "Without slos there should be no SLO dashboard."
   }
 }

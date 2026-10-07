@@ -85,7 +85,7 @@ hours`, and `window_days` is 7, 30 or 90 (Datadog's choices).
 | SLO definition | `slos` entry with a `grafana` block | the same entry, with a `datadog` block |
 | Burn-rate alerts | `custom_rules` for `modules/alerts`, three tiers | `slo alert` monitors in `modules/datadog`, three tiers |
 | Same thresholds, severities and text | yes | yes |
-| SLO view with the error budget left | a dashboard row per SLO in `modules/dashboards` (SLI, budget left, burn rates). Grafana without the Cloud SLO app has no SLO object | the metric SLO, which Datadog shows with its budget |
+| SLO view with the error budget left | an SLO dashboard in `modules/dashboards`, with a row per SLO (SLI, budget left, burn rates). Grafana without the Cloud SLO app has no SLO object | the metric SLO, which Datadog shows with its budget |
 | `overrides`: threshold, severity, paused | `modules/alerts` | `modules/datadog` |
 | `disabled_rules` | yes | yes |
 

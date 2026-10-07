@@ -32,6 +32,17 @@ locals {
     uid      = substr("k8s-overview-${replace(lower(var.cluster_name), "/[^a-z0-9-]/", "-")}", 0, 40)
   }
 
+  slo_dashboard = {
+    panels        = [for i, p in local.slo_panel_specs : merge(local.panel_defaults[p.kind], p.panel, { id = i + 1 })]
+    refresh       = var.refresh
+    schemaVersion = 39
+    tags          = ["kubernetes", "slo", "terraform-kubernetes-observability"]
+    time          = { from = "now-7d", to = "now" }
+    timezone      = "browser"
+    title         = "SLOs (${var.cluster_name})"
+    uid           = substr("slos-${replace(lower(var.cluster_name), "/[^a-z0-9-]/", "-")}", 0, 40)
+  }
+
   loki = var.loki_datasource_uid == null ? null : { type = "loki", uid = var.loki_datasource_uid }
 
   # Matchers for the namespace variable, in PromQL and LogQL.
@@ -326,10 +337,32 @@ locals {
         }
       },
     ], 0, local.loki == null ? 0 : 2),
-    # One row per SLO, the same numbers the burn-rate alerts act on.
+  )
+
+  # The SLO dashboard's panels: the firing SLO alerts, then one row per SLO with
+  # the same numbers the burn-rate alerts act on.
+  slo_panel_specs = concat(
+    [{
+      kind = "alertlist"
+      panel = {
+        gridPos = { h = 6, w = 24, x = 0, y = 0 }
+        options = {
+          alertInstanceLabelFilter = "{cluster=\"${var.cluster_name}\"}"
+          alertName                = "error budget burn"
+          dashboardAlerts          = false
+          groupMode                = "default"
+          maxItems                 = 20
+          sortOrder                = 1
+          stateFilter              = { error = true, firing = true, noData = false, normal = false, pending = true }
+          viewMode                 = "list"
+        }
+        title = "Firing and pending SLO alerts"
+      }
+    }],
     flatten([
+
       for i, id in sort(keys(var.slos)) : [
-        { kind = "row", panel = { gridPos = { h = 1, w = 24, x = 0, y = 100 + i * 9 }, title = "SLO: ${var.slos[id].title} (${format("%g", var.slos[id].target * 100)}% over ${var.slos[id].window_days}d)" } },
+        { kind = "row", panel = { gridPos = { h = 1, w = 24, x = 0, y = 7 + i * 9 }, title = "SLO: ${var.slos[id].title} (${format("%g", var.slos[id].target * 100)}% over ${var.slos[id].window_days}d)" } },
         {
           kind = "stat"
           panel = {
@@ -341,7 +374,7 @@ locals {
               }
               overrides = []
             }
-            gridPos = { h = 8, w = 4, x = 0, y = 101 + i * 9 }
+            gridPos = { h = 8, w = 4, x = 0, y = 8 + i * 9 }
             targets = [{ datasource = local.prometheus, expr = var.slos[id].sli, instant = true, legendFormat = "", refId = "A" }]
             title   = "SLI (${var.slos[id].window_days}d)"
           }
@@ -357,7 +390,7 @@ locals {
               }
               overrides = []
             }
-            gridPos = { h = 8, w = 4, x = 4, y = 101 + i * 9 }
+            gridPos = { h = 8, w = 4, x = 4, y = 8 + i * 9 }
             targets = [{ datasource = local.prometheus, expr = var.slos[id].budget_remaining, instant = true, legendFormat = "", refId = "A" }]
             title   = "Error budget left"
           }
@@ -373,7 +406,7 @@ locals {
               }
               overrides = []
             }
-            gridPos = { h = 8, w = 16, x = 8, y = 101 + i * 9 }
+            gridPos = { h = 8, w = 16, x = 8, y = 8 + i * 9 }
             targets = [for j, w in sort(keys(var.slos[id].burn_rates)) : { datasource = local.prometheus, expr = var.slos[id].burn_rates[w], legendFormat = "burn rate ${w}", range = true, refId = substr("ABC", j, 1) }]
             title   = "Burn rate (1 uses the budget exactly over the window; fast alerts at 14.4)"
           }

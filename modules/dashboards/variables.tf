@@ -42,7 +42,7 @@ variable "refresh" {
 
 variable "slos" {
   default     = {}
-  description = "SLOs to show, one row each: the SLI and the error budget left over the SLO window, and the burn rates the alerts use. Pass `module.slo.dashboard_slos` from `modules/slo`. Prometheus needs data for the whole `window_days` for the budget to be right."
+  description = "SLOs to show on their own dashboard, one row each: the SLI and the error budget left over the SLO window, and the burn rates the alerts use. Pass `module.slo.dashboard_slos` from `modules/slo`. Prometheus needs data for the whole `window_days` for the budget to be right."
   type = map(object({
     budget_remaining = string
     burn_rates       = map(string)

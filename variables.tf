@@ -83,7 +83,7 @@ variable "cluster_type" {
 
 variable "dashboards" {
   default     = {}
-  description = "Overview dashboard settings. Set `loki_datasource_uid` to add a logs row, and `slos` (from modules/slo) to add a row for each SLO. See modules/dashboards."
+  description = "Overview dashboard settings. Set `loki_datasource_uid` to add a logs row, and `slos` (from modules/slo) to add an SLO dashboard with a row for each SLO. See modules/dashboards."
   type = object({
     enabled             = optional(bool, true)
     folder_title        = optional(string)
