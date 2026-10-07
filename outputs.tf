@@ -22,3 +22,8 @@ output "enabled_channels" {
   description = "The notification channels that are turned on."
   value       = try(module.notifications[0].enabled_channels, [])
 }
+
+output "slo_dashboard_url" {
+  description = "URL of the SLO dashboard, or null when there are no SLOs or dashboards are off."
+  value       = try(module.dashboards[0].slo_dashboard_url, null)
+}

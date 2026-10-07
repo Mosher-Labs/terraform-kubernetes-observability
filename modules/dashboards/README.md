@@ -11,7 +11,6 @@ top scopes the workload panels.
 | Workloads | Restarts per pod, deployments missing replicas |
 | Synthetic checks | Status per target, response time, TLS certificate days left |
 | Logs | Error-looking log lines, when `loki_datasource_uid` is set |
-| SLOs | A row for each SLO from `slos` (`module.slo.dashboard_slos`): the SLI, the error budget left, and the 1h, 6h and 1d burn rates the alerts use |
 | Services | Requests per second, 5xx error rate and p90 latency per service, and the slowest routes, when `apm.enabled` is set (the root module passes `alerts.apm`) |
 
 ## Usage
@@ -50,6 +49,7 @@ are overwritten. Save a copy under another name to customize it.
 | Name | Type |
 | ---- | ---- |
 | [grafana_dashboard.overview](https://registry.terraform.io/providers/grafana/grafana/latest/docs/resources/dashboard) | resource |
+| [grafana_dashboard.slos](https://registry.terraform.io/providers/grafana/grafana/latest/docs/resources/dashboard) | resource |
 | [grafana_folder.this](https://registry.terraform.io/providers/grafana/grafana/latest/docs/resources/folder) | resource |
 
 ## Inputs
@@ -62,7 +62,7 @@ are overwritten. Save a copy under another name to customize it.
 | folder\_title | Title of the Grafana folder for the dashboard. Defaults to "Kubernetes dashboards (<cluster\_name>)". | `string` | `null` | no |
 | loki\_datasource\_uid | UID of a Loki datasource with the cluster's logs, labeled with `cluster` and `namespace` (as modules/stack's Alloy does). Null leaves out the logs row. | `string` | `null` | no |
 | refresh | How often the dashboard refreshes. | `string` | `"1m"` | no |
-| slos | SLOs to show, one row each: the SLI and the error budget left over the SLO window, and the burn rates the alerts use. Pass `module.slo.dashboard_slos` from `modules/slo`. Prometheus needs data for the whole `window_days` for the budget to be right. | ```map(object({ budget_remaining = string burn_rates = map(string) sli = string target = number title = string window_days = number }))``` | `{}` | no |
+| slos | SLOs to show on their own dashboard, one row each: the SLI and the error budget left over the SLO window, and the burn rates the alerts use. Pass `module.slo.dashboard_slos` from `modules/slo`. Prometheus needs data for the whole `window_days` for the budget to be right. | ```map(object({ budget_remaining = string burn_rates = map(string) sli = string target = number title = string window_days = number }))``` | `{}` | no |
 
 ## Outputs
 
@@ -71,5 +71,16 @@ are overwritten. Save a copy under another name to customize it.
 | dashboard\_uid | UID of the overview dashboard. |
 | dashboard\_url | URL of the overview dashboard. |
 | folder\_uid | UID of the folder that holds the dashboard. |
+| slo\_dashboard\_uid | UID of the SLO dashboard, or null when there are no SLOs. |
+| slo\_dashboard\_url | URL of the SLO dashboard, or null when there are no SLOs. |
 <!-- END_TF_DOCS -->
 <!-- markdownlint-enable -->
+
+## SLO dashboard
+
+With `slos` set (`module.slo.dashboard_slos` from [modules/slo](../slo/README.md)),
+the module also creates an "SLOs (<cluster_name>)" dashboard with every SLO in
+one place: a list of the firing and pending SLO alerts at the top, then a row
+for each SLO with its SLI and the error budget left over the SLO window, and
+the 1h, 6h and 1d burn rates the alerts use. Prometheus needs data for the
+whole window for the budget to be right.
