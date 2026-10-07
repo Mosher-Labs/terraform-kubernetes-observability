@@ -42,7 +42,7 @@ locals {
         pending_period = "0s"
         severity       = local.tiers[tier].severity
         subject        = "SLO: ${slo.title}"
-        summary        = "${slo.title} is spending its error budget ${local.burn_rate[slo_id][tier]} times faster than the ${format("%g", slo.target * 100)}% SLO allows, over the last ${local.tiers[tier].long} and ${local.tiers[tier].short}. At this rate the ${slo.window_days}-day budget is gone in ${format("%.1f", slo.window_days * 24 / local.burn_rate[slo_id][tier])} hours."
+        summary        = "${slo.title} is spending its error budget at ${local.burn_rate[slo_id][tier]}x the rate the ${format("%g", slo.target * 100)}% SLO allows, over the last ${local.tiers[tier].long} and ${local.tiers[tier].short}. At this rate the ${slo.window_days}-day budget is gone in ${format("%.1f", slo.window_days * 24 / local.burn_rate[slo_id][tier])} hours."
         threshold      = local.burn_rate[slo_id][tier]
         title          = "${slo.title}: ${tier} error budget burn"
       }
