@@ -152,6 +152,26 @@ variable "renotify_interval_minutes" {
   })
 }
 
+variable "slos" {
+  default     = {}
+  description = "SLOs to create, with a burn-rate monitor for each tier. Pass `module.slo.datadog_slos` from `modules/slo`, which also renders the Grafana rules from the same SLOs."
+  type = map(object({
+    denominator = string
+    group       = string
+    name        = string
+    numerator   = string
+    target      = number
+    timeframe   = string
+    tiers = map(object({
+      burn_rate    = number
+      long_window  = string
+      severity     = string
+      short_window = string
+      summary      = string
+    }))
+  }))
+}
+
 variable "tags" {
   default     = []
   description = "Extra tags on every monitor, such as `team:platform`."

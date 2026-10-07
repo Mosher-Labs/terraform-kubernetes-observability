@@ -4,6 +4,11 @@ output "burn_rates" {
 }
 
 output "custom_rules" {
-  description = "Burn-rate alert rules in the shape `modules/alerts` takes as `custom_rules`, keyed `<slo>_burn_<tier>`."
+  description = "Burn-rate alert rules for the SLOs with a `grafana` block, in the shape `modules/alerts` takes as `custom_rules`, keyed `<slo>_burn_<tier>`."
   value       = local.rules
+}
+
+output "datadog_slos" {
+  description = "The SLOs with a `datadog` block, in the shape `modules/datadog` takes as `slos`."
+  value       = local.datadog_slos
 }

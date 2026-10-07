@@ -40,7 +40,8 @@ managed Prometheus, or Grafana Cloud.
 - **One catalog for every backend**, `modules/catalog`: each rule is written
   once, with a block for Grafana and one for Datadog.
 - **SLO burn-rate alerts** with `modules/slo`: give it an SLO target and an
-  error-ratio query, and it renders the fast, medium and slow burn alerts.
+  SLI query for each backend, and it renders the fast, medium and slow burn
+  alerts for Grafana and Datadog.
 - **Submodules you can use on their own:** `modules/alerts`, `modules/catalog`,
   `modules/dashboards`, `modules/datadog`, `modules/notifications`,
   `modules/slo` and `modules/stack`.

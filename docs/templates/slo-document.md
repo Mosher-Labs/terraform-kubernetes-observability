@@ -36,8 +36,8 @@ sentences. Add a diagram link if one helps.]
 | Category | SLI (what we measure) | How it is calculated | Data source | SLO |
 | --- | --- | --- | --- | --- |
 | Availability | [proportion of valid requests that succeed] | [good events / valid events] | [load balancer metric] | [99.9%] |
-| Latency (fast) | <proportion of requests faster than [N] ms> | [fast requests / valid requests] | [request histogram] | [90%] |
-| Latency (acceptable) | <proportion faster than [N] ms> | [...] | [...] | [99%] |
+| Latency (fast) | [proportion of requests faster than N ms] | [fast requests / valid requests] | [request histogram] | [90%] |
+| Latency (acceptable) | [proportion faster than N ms] | [...] | [...] | [99%] |
 | [Freshness / correctness / durability] | [...] | [...] | [...] | [...] |
 
 Define "valid request" and "good request" here: [which status codes count as
@@ -62,7 +62,7 @@ What happens when the budget is spent: see the error budget policy.
 | --- | --- | --- | --- | --- |
 | Fast burn | 14.4 | 1h | 5m | Page |
 | Medium burn | 6 | 6h | 30m | Page |
-| Slow burn | 1 | 3d | 6h | Ticket |
+| Slow burn | 3 | 1d | 2h | Ticket |
 
 Runbook: [link]
 
