@@ -528,3 +528,94 @@ run "custom_rules_need_a_valid_operator" {
 
   expect_failures = [var.custom_rules]
 }
+
+run "runbooks_link_rules_that_have_one" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name = "homelab"
+    cluster_type = "k3s"
+    runbooks = {
+      base_url = "https://example.com/runbooks/"
+      rule_ids = ["node_not_ready", "prometheus_not_ingesting"]
+      urls     = { prometheus_not_ingesting = "https://wiki.example.com/prometheus" }
+    }
+  }
+
+  assert {
+    condition     = output.rules["node_not_ready"].runbook_url == "https://example.com/runbooks/node_not_ready.md"
+    error_message = "A rule in rule_ids should link to <base_url><rule_id>.md."
+  }
+
+  assert {
+    condition     = output.rules["prometheus_not_ingesting"].runbook_url == "https://wiki.example.com/prometheus"
+    error_message = "A URL in urls should win over base_url."
+  }
+
+  assert {
+    condition     = one([for r in grafana_rule_group.this["nodes"].rule : r.annotations.runbook_url if r.labels.rule_id == "node_not_ready"]) == "https://example.com/runbooks/node_not_ready.md"
+    error_message = "The link should be the rule's runbook_url annotation."
+  }
+
+  assert {
+    condition     = alltrue([for r in grafana_rule_group.this["nodes"].rule : r.labels.rule_id == "node_not_ready" || !contains(keys(r.annotations), "runbook_url")])
+    error_message = "Rules without a runbook should get no runbook_url annotation."
+  }
+
+  assert {
+    condition     = !contains(output.rules_without_runbook, "node_not_ready") && contains(output.rules_without_runbook, "apiserver_errors") && !contains(output.rules_without_runbook, "pod_pending")
+    error_message = "rules_without_runbook should list critical rules with no link, and leave out warnings."
+  }
+}
+
+run "runbooks_reject_unknown_rule_ids" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name = "homelab"
+    cluster_type = "k3s"
+    runbooks     = { urls = { no_such_rule = "https://example.com/x" } }
+  }
+
+  expect_failures = [grafana_folder.this]
+}
+
+run "runbook_rule_ids_need_a_base_url" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name = "homelab"
+    cluster_type = "k3s"
+    runbooks     = { rule_ids = ["node_not_ready"] }
+  }
+
+  expect_failures = [var.runbooks]
+}
+
+run "warn_missing_warns_about_critical_rules" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name = "homelab"
+    cluster_type = "k3s"
+    runbooks     = { warn_missing = true }
+  }
+
+  expect_failures = [check.runbooks]
+}

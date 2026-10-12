@@ -15,6 +15,7 @@ module "alerts" {
   labels                      = var.alerts.labels
   overrides                   = var.alerts.overrides
   prometheus_datasource_uid   = var.prometheus_datasource_uid
+  runbooks                    = var.alerts.runbooks
   workload_selector           = var.alerts.workload_selector
 }
 

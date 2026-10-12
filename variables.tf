@@ -66,6 +66,12 @@ variable "alerts" {
       severity       = optional(string)
       threshold      = optional(number)
     })), {})
+    runbooks = optional(object({
+      base_url     = optional(string)
+      rule_ids     = optional(set(string), [])
+      urls         = optional(map(string), {})
+      warn_missing = optional(bool, false)
+    }), {})
     workload_selector = optional(string, "")
   })
 }

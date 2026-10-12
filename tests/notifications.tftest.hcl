@@ -173,6 +173,11 @@ run "webex_incoming_webhook_needs_no_bot" {
   }
 
   assert {
+    condition     = strcontains(nonsensitive(one(one(grafana_contact_point.this.webhook).payload).template), "with .Annotations.runbook_url")
+    error_message = "Each alert line should carry its runbook link when the rule has one."
+  }
+
+  assert {
     condition     = output.enabled_channels == tolist(["webex"])
     error_message = "Webex should count as an enabled channel."
   }
@@ -263,6 +268,11 @@ run "webex_bot_gets_the_title_and_summaries" {
     condition     = strcontains(nonsensitive(one(grafana_contact_point.this.webex).message), "tmpl.Inline") && strcontains(nonsensitive(one(grafana_contact_point.this.webex).message), ".Annotations.summary")
     error_message = "The Webex bot should get the title template and one line per alert, like the webhook mode."
   }
+
+  assert {
+    condition     = strcontains(nonsensitive(one(grafana_contact_point.this.webex).message), "{{ with .Annotations.runbook_url }} ([Runbook]({{ . }})){{ end }}")
+    error_message = "Each alert line should carry its runbook link when the rule has one."
+  }
 }
 
 run "heartbeat_has_its_own_contact_point_and_route" {
@@ -350,5 +360,10 @@ run "teams_with_an_icon_gets_a_custom_card" {
   assert {
     condition     = strcontains(nonsensitive(one(one(grafana_contact_point.this.webhook).payload).template), "application/vnd.microsoft.card.adaptive") && nonsensitive(one(one(grafana_contact_point.this.webhook).payload).vars.icon_url) == "https://example.com/logo.png"
     error_message = "The card should be an Adaptive Card carrying the icon URL."
+  }
+
+  assert {
+    condition     = strcontains(nonsensitive(one(one(grafana_contact_point.this.webhook).payload).template), "with .Annotations.runbook_url")
+    error_message = "Each alert line on the card should carry its runbook link when the rule has one."
   }
 }

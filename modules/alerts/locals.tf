@@ -45,5 +45,16 @@ locals {
     },
   )
 
-  unknown_ids = setsubtract(setunion(var.disabled_rules, keys(var.overrides)), setunion(module.catalog.known_rule_ids, keys(var.custom_rules)))
+  # Each rule's runbook link, for rules that have one. A URL in urls wins over
+  # base_url.
+  runbook_urls = {
+    for id in keys(local.rules) : id => lookup(var.runbooks.urls, id, "${coalesce(var.runbooks.base_url, "")}${id}.md")
+    if contains(keys(var.runbooks.urls), id) || contains(var.runbooks.rule_ids, id)
+  }
+
+  # Rules that page with nowhere to go. Every critical rule should have a
+  # runbook; a warning or info rule can do without.
+  rules_without_runbook = sort([for id, r in local.rules : id if r.severity == "critical" && !contains(keys(local.runbook_urls), id)])
+
+  unknown_ids = setsubtract(setunion(var.disabled_rules, keys(var.overrides), var.runbooks.rule_ids, keys(var.runbooks.urls)), setunion(module.catalog.known_rule_ids, keys(var.custom_rules)))
 }

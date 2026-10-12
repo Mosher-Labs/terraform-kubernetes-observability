@@ -152,6 +152,22 @@ variable "renotify_interval_minutes" {
   })
 }
 
+variable "runbooks" {
+  default     = {}
+  description = "Where each rule's runbook lives, added to the monitor message as a \"Runbook:\" line. `base_url` with `rule_ids`: the listed rules link to `<base_url><rule_id>.md`. `urls`: a full URL per rule ID (catalog rules, and SLO burn-rate rules such as `dns_burn_fast`), which wins over `base_url`. `warn_missing`: a plan warning that lists critical monitors with no runbook."
+  type = object({
+    base_url     = optional(string)
+    rule_ids     = optional(set(string), [])
+    urls         = optional(map(string), {})
+    warn_missing = optional(bool, false)
+  })
+
+  validation {
+    condition     = length(var.runbooks.rule_ids) == 0 || var.runbooks.base_url != null
+    error_message = "runbooks.rule_ids needs runbooks.base_url."
+  }
+}
+
 variable "slos" {
   default     = {}
   description = "SLOs to create, with a burn-rate monitor for each tier. Pass `module.slo.datadog_slos` from `modules/slo`, which also renders the Grafana rules from the same SLOs."

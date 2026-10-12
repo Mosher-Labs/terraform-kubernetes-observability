@@ -9,7 +9,7 @@ resource "grafana_folder" "this" {
 
     precondition {
       condition     = length(local.unknown_ids) == 0
-      error_message = "Unknown rule IDs in disabled_rules or overrides: ${join(", ", local.unknown_ids)}."
+      error_message = "Unknown rule IDs in disabled_rules, overrides or runbooks: ${join(", ", local.unknown_ids)}."
     }
   }
 }
@@ -25,11 +25,15 @@ resource "grafana_rule_group" "this" {
     # Sorted by ID so the plan stays stable.
     for_each = { for id in sort(keys(local.rules)) : id => local.rules[id] if local.rules[id].group == each.key }
     content {
-      annotations = {
-        # What the alert is about, such as "api in prod", for short titles.
-        subject = rule.value.subject
-        summary = rule.value.summary
-      }
+      annotations = merge(
+        {
+          # What the alert is about, such as "api in prod", for short titles.
+          subject = rule.value.subject
+          summary = rule.value.summary
+        },
+        # Grafana's own field for it: the alert list shows it as a link.
+        contains(keys(local.runbook_urls), rule.key) ? { runbook_url = local.runbook_urls[rule.key] } : {},
+      )
       condition      = "B"
       exec_err_state = "Error"
       for            = rule.value.pending_period
@@ -80,5 +84,13 @@ resource "grafana_rule_group" "this" {
         }
       }
     }
+  }
+}
+
+# Not an error: a plan warning, so a missing runbook never blocks an apply.
+check "runbooks" {
+  assert {
+    condition     = !var.runbooks.warn_missing || length(local.rules_without_runbook) == 0
+    error_message = "Critical rules with no runbook: ${join(", ", local.rules_without_runbook)}. Add them to runbooks.rule_ids or runbooks.urls."
   }
 }

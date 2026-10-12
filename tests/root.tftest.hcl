@@ -63,3 +63,22 @@ run "dashboards_can_be_turned_off" {
     error_message = "dashboards.enabled = false should create no dashboard."
   }
 }
+
+run "runbooks_pass_through" {
+  command = plan
+
+  variables {
+    alerts = {
+      runbooks = {
+        base_url = "https://example.com/runbooks/"
+        rule_ids = ["node_not_ready"]
+      }
+    }
+    slack = { url = "https://hooks.slack.com/services/T000/B000/XXXX" }
+  }
+
+  assert {
+    condition     = !contains(output.rules_without_runbook, "node_not_ready") && contains(output.rules_without_runbook, "apiserver_errors")
+    error_message = "alerts.runbooks should reach modules/alerts."
+  }
+}

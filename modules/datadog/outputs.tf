@@ -22,6 +22,11 @@ output "rule_ids" {
   value       = sort(keys(local.monitors))
 }
 
+output "rules_without_runbook" {
+  description = "IDs of critical monitors with no runbook link. Every monitor that pages should have one."
+  value       = local.rules_without_runbook
+}
+
 output "skipped_rules" {
   description = "Catalog rules that have no Datadog monitor, with the reason and what to use instead."
   value       = module.catalog.skipped_rules

@@ -57,7 +57,7 @@ locals {
     for id, r in module.catalog.rules : id => {
       draft_status = r.paused ? "draft" : "published"
       group        = r.group
-      message      = trimspace("${local.message_prefix}\n${r.summary}\n\n${join(" ", concat(local.handles, local.service_check[id] ? local.service_check_handles : local.metric_handles))}")
+      message      = trimspace("${local.message_prefix}\n${r.summary}${local.runbook_lines[id]}\n\n${join(" ", concat(local.handles, local.service_check[id] ? local.service_check_handles : local.metric_handles))}")
       name         = "[${var.cluster_name}] ${r.title}"
       # Datadog's defaults apply when a rule doesn't set these. Service checks
       # take neither.
@@ -95,9 +95,24 @@ locals {
     for id, r in module.catalog.rules : id => regex("^([a-z0-9_]+\\([a-z0-9_]+\\):)(.*)$", r.query) if !local.service_check[id]
   }
 
+  # A "Runbook:" line for the message of each rule that has a runbook, and ""
+  # for the rest. A URL in urls wins over base_url.
+  rule_ids_all = setunion(keys(module.catalog.rules), flatten([for slo_id, slo in var.slos : [for tier in keys(slo.tiers) : "${slo_id}_burn_${tier}"]]))
+  runbook_lines = {
+    for id in local.rule_ids_all : id => contains(keys(local.runbook_urls), id) ? "\n\nRunbook: ${local.runbook_urls[id]}" : ""
+  }
+  runbook_urls = {
+    for id in local.rule_ids_all : id => lookup(var.runbooks.urls, id, "${coalesce(var.runbooks.base_url, "")}${id}.md")
+    if contains(keys(var.runbooks.urls), id) || contains(var.runbooks.rule_ids, id)
+  }
+
+  # Monitors that page with nowhere to go. Every critical monitor should have
+  # a runbook; a warning or info one can do without.
+  rules_without_runbook = sort([for id, m in merge(local.monitors, local.slo_monitors) : id if m.severity == "critical" && !contains(keys(local.runbook_urls), id)])
+
   service_check = { for id, r in module.catalog.rules : id => try(r.type, "") == "service check" }
 
-  unknown_ids = setsubtract(setunion(var.disabled_rules, keys(var.overrides)), setunion(module.catalog.known_rule_ids, keys(local.slo_monitors_all)))
+  unknown_ids = setsubtract(setunion(var.disabled_rules, keys(var.overrides), var.runbooks.rule_ids, keys(var.runbooks.urls)), setunion(module.catalog.known_rule_ids, keys(local.slo_monitors_all)))
 
   # A multi-alert group whose object is deleted (a Deployment, a pod, a PVC)
   # stops reporting, and Datadog keeps the group in its last state, so an
@@ -116,7 +131,7 @@ locals {
     for slo_id, slo in var.slos : {
       for tier, t in slo.tiers : "${slo_id}_burn_${tier}" => {
         draft_status = coalesce(try(var.overrides["${slo_id}_burn_${tier}"].paused, null), false) ? "draft" : "published"
-        message      = trimspace("${local.message_prefix}\n${t.summary}\n\n${join(" ", concat(local.handles, local.service_check_handles))}")
+        message      = trimspace("${local.message_prefix}\n${t.summary}${local.runbook_lines["${slo_id}_burn_${tier}"]}\n\n${join(" ", concat(local.handles, local.service_check_handles))}")
         name         = "[${var.cluster_name}] ${slo.name}: ${tier} error budget burn"
         query = format("burn_rate(\"%s\").over(\"%s\").long_window(\"%s\").short_window(\"%s\") > %s",
           datadog_service_level_objective.this[slo_id].id, slo.timeframe, t.long_window, t.short_window,

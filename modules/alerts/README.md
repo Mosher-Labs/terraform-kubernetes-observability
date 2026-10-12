@@ -74,6 +74,7 @@ module "alerts" {
 | heartbeat\_enabled | Whether to create the heartbeat rule: it always fires while Grafana can query Prometheus, labeled heartbeat = "true", for modules/notifications to send to an outside heartbeat service. | `bool` | `false` | no |
 | labels | Extra labels added to every alert, for routing or ownership. | `map(string)` | `{}` | no |
 | overrides | Per-rule changes, keyed by rule ID: threshold, pending period (how long the condition must hold before the alert fires, such as "10m"), severity, or a paused flag. | ```map(object({ paused = optional(bool) pending_period = optional(string) severity = optional(string) threshold = optional(number) }))``` | `{}` | no |
+| runbooks | Where each rule's runbook lives, added to the rule as the `runbook_url` annotation. `base_url` with `rule_ids`: the listed rules link to `<base_url><rule_id>.md`. `urls`: a full URL per rule ID, which wins over `base_url`. `warn_missing`: a plan warning that lists critical rules with no runbook. Rules without a runbook get no link. | ```object({ base_url = optional(string) rule_ids = optional(set(string), []) urls = optional(map(string), {}) warn_missing = optional(bool, false) })``` | `{}` | no |
 | workload\_selector | PromQL label matchers added to every workload rule, to scope them. For example `namespace!="kube-system"`. Empty means all namespaces. | `string` | `""` | no |
 
 ## Outputs
@@ -82,6 +83,7 @@ module "alerts" {
 | ---- | ----------- |
 | folder\_uid | UID of the Grafana folder that holds the rules. |
 | rule\_ids | IDs of the rules that were created, after cluster type, disabled\_rules and control\_plane are applied. |
-| rules | The rules as created: group, title, subject, query, threshold, pending period and severity, keyed by rule ID. |
+| rules | The rules as created: group, title, subject, query, threshold, pending period, severity and runbook URL, keyed by rule ID. |
+| rules\_without\_runbook | IDs of critical rules with no runbook link. Every rule that pages should have one. |
 <!-- END_TF_DOCS -->
 <!-- markdownlint-enable -->
