@@ -221,7 +221,7 @@ terraform init -backend=false && terraform test
 
 | Name | Version |
 | ---- | ------- |
-| datadog | 4.25.0 |
+| datadog | >= 4.0.0, < 5.0.0 |
 
 ## Modules
 
