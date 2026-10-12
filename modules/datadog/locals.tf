@@ -102,7 +102,9 @@ locals {
     for id in local.rule_ids_all : id => contains(keys(local.runbook_urls), id) ? "\n\nRunbook: ${local.runbook_urls[id]}" : ""
   }
   runbook_urls = {
-    for id in local.rule_ids_all : id => lookup(var.runbooks.urls, id, "${coalesce(var.runbooks.base_url, "")}${id}.md")
+    # try() and not lookup(): lookup's default is always evaluated, and with
+    # only urls set, base_url is null.
+    for id in local.rule_ids_all : id => try(var.runbooks.urls[id], "${var.runbooks.base_url}${id}.md")
     if contains(keys(var.runbooks.urls), id) || contains(var.runbooks.rule_ids, id)
   }
 

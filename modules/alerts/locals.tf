@@ -48,7 +48,9 @@ locals {
   # Each rule's runbook link, for rules that have one. A URL in urls wins over
   # base_url.
   runbook_urls = {
-    for id in keys(local.rules) : id => lookup(var.runbooks.urls, id, "${coalesce(var.runbooks.base_url, "")}${id}.md")
+    # try() and not lookup(): lookup's default is always evaluated, and with
+    # only urls set, base_url is null.
+    for id in keys(local.rules) : id => try(var.runbooks.urls[id], "${var.runbooks.base_url}${id}.md")
     if contains(keys(var.runbooks.urls), id) || contains(var.runbooks.rule_ids, id)
   }
 
