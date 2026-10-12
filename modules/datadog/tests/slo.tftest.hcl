@@ -133,3 +133,16 @@ run "runbooks_reject_unknown_rule_ids" {
   # Both monitor resources check the IDs.
   expect_failures = [datadog_monitor.slo, datadog_monitor.this]
 }
+
+run "runbook_urls_work_without_a_base_url" {
+  command = apply
+
+  variables {
+    runbooks = { urls = { dns_burn_fast = "https://wiki.example.com/dns" } }
+  }
+
+  assert {
+    condition     = strcontains(datadog_monitor.slo["dns_burn_fast"].message, "Runbook: https://wiki.example.com/dns") && !strcontains(datadog_monitor.slo["dns_burn_slow"].message, "Runbook:")
+    error_message = "urls should work on their own, without base_url."
+  }
+}

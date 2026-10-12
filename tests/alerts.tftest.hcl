@@ -619,3 +619,22 @@ run "warn_missing_warns_about_critical_rules" {
 
   expect_failures = [check.runbooks]
 }
+
+run "runbook_urls_work_without_a_base_url" {
+  command = plan
+
+  module {
+    source = "./modules/alerts"
+  }
+
+  variables {
+    cluster_name = "homelab"
+    cluster_type = "k3s"
+    runbooks     = { urls = { node_not_ready = "https://wiki.example.com/nodes" } }
+  }
+
+  assert {
+    condition     = output.rules["node_not_ready"].runbook_url == "https://wiki.example.com/nodes" && output.rules["pod_pending"].runbook_url == null
+    error_message = "urls should work on their own, without base_url."
+  }
+}
