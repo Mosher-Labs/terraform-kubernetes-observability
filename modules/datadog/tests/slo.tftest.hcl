@@ -96,3 +96,40 @@ run "overrides_apply_to_slo_monitors" {
     error_message = "Rules without an override should not change."
   }
 }
+
+run "runbooks_add_a_line_to_the_message" {
+  command = apply
+
+  variables {
+    runbooks = {
+      base_url = "https://example.com/runbooks/"
+      rule_ids = ["dns_burn_fast", "node_not_ready"]
+    }
+  }
+
+  assert {
+    condition     = strcontains(datadog_monitor.slo["dns_burn_fast"].message, "burning budget fast.\n\nRunbook: https://example.com/runbooks/dns_burn_fast.md\n\n@slack-homelab")
+    error_message = "An SLO monitor with a runbook should have a Runbook line between the summary and the handles."
+  }
+
+  assert {
+    condition     = strcontains(datadog_monitor.this["node_not_ready"].message, "Runbook: https://example.com/runbooks/node_not_ready.md") && !strcontains(datadog_monitor.this["pod_pending"].message, "Runbook:")
+    error_message = "Only monitors with a runbook should get a Runbook line."
+  }
+
+  assert {
+    condition     = !contains(output.rules_without_runbook, "dns_burn_fast") && !contains(output.rules_without_runbook, "dns_burn_slow") && contains(output.rules_without_runbook, "pod_crash_looping") == (datadog_monitor.this["pod_crash_looping"].priority == "1")
+    error_message = "rules_without_runbook should list critical monitors with no link, and leave out warnings."
+  }
+}
+
+run "runbooks_reject_unknown_rule_ids" {
+  command = plan
+
+  variables {
+    runbooks = { urls = { no_such_rule = "https://example.com/x" } }
+  }
+
+  # Both monitor resources check the IDs.
+  expect_failures = [datadog_monitor.slo, datadog_monitor.this]
+}

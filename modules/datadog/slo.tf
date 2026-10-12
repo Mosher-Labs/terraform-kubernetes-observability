@@ -39,7 +39,7 @@ resource "datadog_monitor" "slo" {
   lifecycle {
     precondition {
       condition     = length(local.unknown_ids) == 0
-      error_message = "Unknown rule IDs in disabled_rules or overrides: ${join(", ", local.unknown_ids)}."
+      error_message = "Unknown rule IDs in disabled_rules, overrides or runbooks: ${join(", ", local.unknown_ids)}."
     }
   }
 }

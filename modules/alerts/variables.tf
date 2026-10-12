@@ -146,6 +146,22 @@ variable "prometheus_datasource_uid" {
   type        = string
 }
 
+variable "runbooks" {
+  default     = {}
+  description = "Where each rule's runbook lives, added to the rule as the `runbook_url` annotation. `base_url` with `rule_ids`: the listed rules link to `<base_url><rule_id>.md`. `urls`: a full URL per rule ID, which wins over `base_url`. `warn_missing`: a plan warning that lists critical rules with no runbook. Rules without a runbook get no link."
+  type = object({
+    base_url     = optional(string)
+    rule_ids     = optional(set(string), [])
+    urls         = optional(map(string), {})
+    warn_missing = optional(bool, false)
+  })
+
+  validation {
+    condition     = length(var.runbooks.rule_ids) == 0 || var.runbooks.base_url != null
+    error_message = "runbooks.rule_ids needs runbooks.base_url."
+  }
+}
+
 variable "workload_selector" {
   default     = ""
   description = "PromQL label matchers added to every workload rule, to scope them. For example `namespace!=\"kube-system\"`. Empty means all namespaces."

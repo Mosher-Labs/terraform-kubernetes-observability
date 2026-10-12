@@ -42,7 +42,15 @@ resource "datadog_monitor" "this" {
   lifecycle {
     precondition {
       condition     = length(local.unknown_ids) == 0
-      error_message = "Unknown rule IDs in disabled_rules or overrides: ${join(", ", local.unknown_ids)}."
+      error_message = "Unknown rule IDs in disabled_rules, overrides or runbooks: ${join(", ", local.unknown_ids)}."
     }
+  }
+}
+
+# Not an error: a plan warning, so a missing runbook never blocks an apply.
+check "runbooks" {
+  assert {
+    condition     = !var.runbooks.warn_missing || length(local.rules_without_runbook) == 0
+    error_message = "Critical monitors with no runbook: ${join(", ", local.rules_without_runbook)}. Add them to runbooks.rule_ids or runbooks.urls."
   }
 }

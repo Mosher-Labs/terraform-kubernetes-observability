@@ -12,11 +12,12 @@ locals {
 
   # Teams with an icon gets a custom Adaptive Card through the webhook
   # integration: the icon and the title, red when firing and green when
-  # resolved, then one line per alert and a link to Grafana.
+  # resolved, then one line per alert (with its runbook link, if it has one)
+  # and a link to Grafana.
   teams_card_enabled = local.teams_enabled && local.teams_icon_url != null
   teams_card_payload = join("", [
     "{{ $title := tmpl.Inline `${var.title_template}` . }}",
-    "{{ $body := \"\" }}{{ range .Alerts }}{{ $body = printf \"%s- %s\\n\" $body .Annotations.summary }}{{ end }}",
+    "{{ $body := \"\" }}{{ range .Alerts }}{{ $runbook := \"\" }}{{ with .Annotations.runbook_url }}{{ $runbook = printf \" ([Runbook](%s))\" . }}{{ end }}{{ $body = printf \"%s- %s%s\\n\" $body .Annotations.summary $runbook }}{{ end }}",
     "{{ $color := \"Good\" }}{{ if eq .Status \"firing\" }}{{ $color = \"Attention\" }}{{ end }}",
     # One alert links to its rule; several link to the alert list.
     "{{ $link := printf \"%salerting/list\" .ExternalURL }}{{ if eq (len .Alerts) 1 }}{{ with (index .Alerts 0).GeneratorURL }}{{ $link = . }}{{ end }}{{ end }}",
@@ -30,16 +31,17 @@ locals {
   teams_icon_url = local.teams_enabled ? try(coalesce(nonsensitive(var.teams.icon_url), var.icon_url), null) : null
 
   webex_bot_enabled     = local.webex_enabled && !local.webex_webhook_enabled
-  webex_bot_message     = "{{ $title := tmpl.Inline `${var.title_template}` . }}**{{ $title }}**{{ range .Alerts }}\n- {{ .Annotations.summary }}{{ end }}"
+  webex_bot_message     = "{{ $title := tmpl.Inline `${var.title_template}` . }}**{{ $title }}**{{ range .Alerts }}\n- {{ .Annotations.summary }}{{ with .Annotations.runbook_url }} ([Runbook]({{ . }})){{ end }}{{ end }}"
   webex_enabled         = nonsensitive(var.webex != null)
   webex_webhook_enabled = local.webex_enabled && nonsensitive(try(var.webex.webhook_url, null) != null)
 
-  # Both Webex modes send the title in bold, then one line per alert. The bot
+  # Both Webex modes send the title in bold, then one line per alert, with a
+  # Runbook link when the rule has a runbook_url annotation. The bot
   # takes it as its message; an incoming webhook takes {"markdown": "..."}. The title reuses var.title_template through
   # tmpl.Inline, which is why that template can't contain backticks.
   webex_webhook_payload = join("", [
     "{{ $title := tmpl.Inline `${var.title_template}` . }}",
-    "{{ $body := \"\" }}{{ range .Alerts }}{{ $body = printf \"%s\\n- %s\" $body .Annotations.summary }}{{ end }}",
+    "{{ $body := \"\" }}{{ range .Alerts }}{{ $runbook := \"\" }}{{ with .Annotations.runbook_url }}{{ $runbook = printf \" ([Runbook](%s))\" . }}{{ end }}{{ $body = printf \"%s\\n- %s%s\" $body .Annotations.summary $runbook }}{{ end }}",
     "{{ coll.Dict \"markdown\" (printf \"**%s**%s\" $title $body) | data.ToJSON }}",
   ])
 }

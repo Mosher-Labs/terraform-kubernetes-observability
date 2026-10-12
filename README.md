@@ -207,6 +207,40 @@ alerts = {
 As with catalog rules, the query returns a value per series and the threshold
 decides; a query that returns nothing counts as healthy.
 
+## Runbooks
+
+Every rule that pages should link to a runbook: what the alert means, the
+first checks, likely causes and mitigations. `alerts.runbooks` adds the link
+to each rule that has one, as Grafana's `runbook_url` annotation. Slack, email
+and the built-in Teams message list it with the other annotations, and the
+custom Teams card and both Webex modes add a Runbook link to each alert line.
+`modules/datadog` takes the same `runbooks` input and adds a "Runbook:" line to
+the monitor message.
+
+```hcl
+alerts = {
+  runbooks = {
+    # These rules link to <base_url><rule_id>.md.
+    base_url = "https://github.com/my-org/my-repo/blob/main/docs/runbooks/"
+    rule_ids = ["node_not_ready", "dns_burn_fast", "dns_burn_medium"]
+    # A full URL for one rule wins over base_url.
+    urls = { pod_crash_looping = "https://wiki.example.com/crash-loops" }
+    # A plan warning that lists critical rules with no runbook.
+    warn_missing = true
+  }
+}
+```
+
+Rules that aren't listed get no link, so there are no links to runbooks that
+don't exist. The `rules_without_runbook` output lists the critical rules
+still missing one. A warning or info rule can use the short form.
+
+Templates are in [docs/templates](docs/templates): a full runbook
+([runbook.md](docs/templates/runbook.md)), a short form for ticket-level
+alerts ([runbook-short.md](docs/templates/runbook-short.md)), and a blameless
+[postmortem](docs/templates/postmortem.md) with action items typed prevent,
+detect, mitigate or process.
+
 ## Service-level (APM) alerts
 
 Turn these on with `alerts.apm.enabled = true`. They need request metrics from
@@ -496,7 +530,7 @@ credentials. See [CONTRIBUTING.md](CONTRIBUTING.md).
 | ---- | ----------- | ---- | ------- | :------: |
 | cluster\_name | Name of the cluster, added to every alert as the `cluster` label and to rule titles. | `string` | n/a | yes |
 | prometheus\_datasource\_uid | UID of the Prometheus-compatible Grafana datasource the alert rules query. | `string` | n/a | yes |
-| alerts | Alert catalog settings. See modules/alerts for each field. | ```object({ apm = optional(object({ deploy_error_rate_percent = optional(number, 1) enabled = optional(bool, false) error_rate_percent = optional(number, 5) latency_avg_seconds = optional(number, 0.5) latency_p90_seconds = optional(number, 1) metric = optional(string, "http_server_request_duration_seconds") min_requests_per_second = optional(number, 0.1) route_label = optional(string, "http_route") selector = optional(string, "") service_label = optional(string, "job") status_label = optional(string, "http_response_status_code") traffic_drop_percent = optional(number, 75) }), {}) backing_services = optional(object({ mongodb = optional(object({ connections_percent = optional(number, 80) enabled = optional(bool, false) replication_lag_seconds = optional(number, 30) }), {}) mysql = optional(object({ connections_percent = optional(number, 80) enabled = optional(bool, false) replication_lag_seconds = optional(number, 30) }), {}) postgres = optional(object({ connections_percent = optional(number, 80) enabled = optional(bool, false) replication_lag_seconds = optional(number, 30) }), {}) rabbitmq = optional(object({ enabled = optional(bool, false) queue_depth = optional(number, 1000) unacked_messages = optional(number, 1000) }), {}) redis = optional(object({ enabled = optional(bool, false) memory_percent = optional(number, 90) }), {}) selector = optional(string, "") }), {}) control_plane = optional(object({ apiserver = optional(bool), etcd = optional(bool) }), {}) custom_rules = optional(map(object({ expr = string group = string operator = string pending_period = string severity = string subject = string summary = string threshold = number title = string })), {}) disabled_rules = optional(set(string), []) enabled = optional(bool, true) evaluation_interval_seconds = optional(number, 60) folder_title = optional(string) labels = optional(map(string), {}) overrides = optional(map(object({ paused = optional(bool) pending_period = optional(string) severity = optional(string) threshold = optional(number) })), {}) workload_selector = optional(string, "") })``` | `{}` | no |
+| alerts | Alert catalog settings. See modules/alerts for each field. | ```object({ apm = optional(object({ deploy_error_rate_percent = optional(number, 1) enabled = optional(bool, false) error_rate_percent = optional(number, 5) latency_avg_seconds = optional(number, 0.5) latency_p90_seconds = optional(number, 1) metric = optional(string, "http_server_request_duration_seconds") min_requests_per_second = optional(number, 0.1) route_label = optional(string, "http_route") selector = optional(string, "") service_label = optional(string, "job") status_label = optional(string, "http_response_status_code") traffic_drop_percent = optional(number, 75) }), {}) backing_services = optional(object({ mongodb = optional(object({ connections_percent = optional(number, 80) enabled = optional(bool, false) replication_lag_seconds = optional(number, 30) }), {}) mysql = optional(object({ connections_percent = optional(number, 80) enabled = optional(bool, false) replication_lag_seconds = optional(number, 30) }), {}) postgres = optional(object({ connections_percent = optional(number, 80) enabled = optional(bool, false) replication_lag_seconds = optional(number, 30) }), {}) rabbitmq = optional(object({ enabled = optional(bool, false) queue_depth = optional(number, 1000) unacked_messages = optional(number, 1000) }), {}) redis = optional(object({ enabled = optional(bool, false) memory_percent = optional(number, 90) }), {}) selector = optional(string, "") }), {}) control_plane = optional(object({ apiserver = optional(bool), etcd = optional(bool) }), {}) custom_rules = optional(map(object({ expr = string group = string operator = string pending_period = string severity = string subject = string summary = string threshold = number title = string })), {}) disabled_rules = optional(set(string), []) enabled = optional(bool, true) evaluation_interval_seconds = optional(number, 60) folder_title = optional(string) labels = optional(map(string), {}) overrides = optional(map(object({ paused = optional(bool) pending_period = optional(string) severity = optional(string) threshold = optional(number) })), {}) runbooks = optional(object({ base_url = optional(string) rule_ids = optional(set(string), []) urls = optional(map(string), {}) warn_missing = optional(bool, false) }), {}) workload_selector = optional(string, "") })``` | `{}` | no |
 | cluster\_type | Kind of cluster: eks, aks, gke, openshift, k3s or generic. Decides which control-plane rules apply. | `string` | `"generic"` | no |
 | dashboards | Overview dashboard settings. Set `loki_datasource_uid` to add a logs row, and `slos` (from modules/slo) to add an SLO dashboard with a row for each SLO. See modules/dashboards. | ```object({ enabled = optional(bool, true) folder_title = optional(string) loki_datasource_uid = optional(string) refresh = optional(string, "1m") # An SLO row for each: pass `module.slo.dashboard_slos` from modules/slo. slos = optional(map(object({ budget_remaining = string burn_rates = map(string) sli = string target = number title = string window_days = number })), {}) })``` | `{}` | no |
 | heartbeat | Outside heartbeat (dead man's switch): a URL to ping, such as a healthchecks.io ping URL, and how often. It alerts you if the pings stop, which catches Grafana, Prometheus or the whole cluster being down. Null turns it off. | ```object({ interval = optional(string, "5m") url = string })``` | `null` | no |
@@ -514,6 +548,7 @@ credentials. See [CONTRIBUTING.md](CONTRIBUTING.md).
 | contact\_point\_name | Name of the contact point, or null when notifications are off. |
 | dashboard\_url | URL of the overview dashboard, or null when dashboards are off. |
 | enabled\_channels | The notification channels that are turned on. |
+| rules\_without\_runbook | IDs of critical alert rules with no runbook link. Every rule that pages should have one. |
 | slo\_dashboard\_url | URL of the SLO dashboard, or null when there are no SLOs or dashboards are off. |
 <!-- END_TF_DOCS -->
 <!-- markdownlint-enable -->
