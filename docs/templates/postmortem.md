@@ -47,12 +47,21 @@ All times in [UTC]. Include detection, key decisions, and each mitigation step.
 
 ## Root causes
 
-[The conditions that allowed the failure. Use the five whys. List more than
-one cause when there is more than one.]
+[The conditions that allowed the failure, found with the five whys. Ask why
+the failure happened, then ask why about each answer, until you reach
+something an action item can fix. That can take fewer than five. Keep each
+answer about the system or the process, not a person. Start another chain for
+each cause when there is more than one.]
 
-1. [Why did the failure happen?]
-2. [Why was that possible?]
-3. [Why wasn't it caught earlier?]
+Cause 1:
+
+1. Why [did the failure happen]? Because [answer 1].
+2. Why [answer 1]? Because [answer 2].
+3. Why [answer 2]? Because [answer 3].
+4. Why [answer 3]? Because [answer 4].
+5. Why [answer 4]? Because [answer 5].
+
+Root cause: [the last answer, the one the action items fix]
 
 ## Trigger
 
@@ -66,8 +75,9 @@ differ.]
 
 ## Detection
 
-<How we found out: alert name, customer report, or luck. Time from trigger to
-detection: [N] minutes. Did the right alert page the right person?>
+[How we found out: alert name, customer report, or luck.] Time from trigger to
+detection: [N] minutes. [Did the right alert page the right person? Why wasn't
+it caught earlier?]
 
 ## Action items
 
