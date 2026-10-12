@@ -121,6 +121,20 @@ raise the retention to match the window.
   one failure is an 8% error rate. A probe once a minute has the same problem
   at 99.9%: one failed probe in an hour is a burn rate of 16.7. Use
   `tiers = ["medium", "slow"]` or `["slow"]`.
+- A service whose traffic swings, such as quiet at night, can page on a couple
+  of bad events in a quiet hour. Set `grafana.bad_events` (a count of bad
+  events over `$${window}`) and `grafana.min_bad_events`, and each alert also
+  needs that many bad events in its long window before it fires:
+
+  ```hcl
+  grafana = {
+    bad_events     = "sum(increase(dns_replies_total{rcode=\"SERVFAIL\"}[$${window}]))"
+    error_ratio    = "..."
+    min_bad_events = 5
+  }
+  ```
+
+  Grafana only: Datadog's burn-rate monitors can't add the condition.
 - A counter `increase()` over 1d is cheap, but at larger scale consider a
   recording rule for the ratio.
 
@@ -138,7 +152,7 @@ Templates for the SLO document and the error budget policy are in
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
-| slos | Your SLOs, keyed by an ID that becomes part of each rule ID. For each one:  - `title`: what the SLO covers, in a few words, such as "Pi-hole DNS replies". - `target`: the objective as a fraction, such as 0.999 for 99.9%. - `window_days`: the SLO window: 7, 30 or 90 (Datadog's choices). Default 30. - `tiers`: which burn-rate alerts to create, out of `fast` (14.4x over 1h and 5m, critical), `medium` (6x over 6h and 30m, critical) and `slow` (3x over 1d and 2h, warning). Default is all three. Use `["slow"]` for a service too quiet to page on. - `group`: the rule group. Default `slo`. - `grafana`: for the Grafana backend, `error_ratio`, a PromQL expression for the fraction of events that were bad over `${window}`, a value from 0 to 1. Write `${window}` where the range goes; it is filled in for each alert window. It must return a single series, so aggregate it with `sum()` or similar. - `datadog`: for the Datadog backend, `good` and `total`, the metric queries that count good events and all valid events (`sum:my.metric{...}.as_count()`).  Each SLO needs at least one backend block. The burn-rate thresholds come from the share of the error budget each tier may spend, so they stay correct for every window. | ```map(object({ datadog = optional(object({ good = string total = string })) grafana = optional(object({ error_ratio = string })) group = optional(string, "slo") target = number tiers = optional(list(string), ["fast", "medium", "slow"]) title = string window_days = optional(number, 30) }))``` | `{}` | no |
+| slos | Your SLOs, keyed by an ID that becomes part of each rule ID. For each one:  - `title`: what the SLO covers, in a few words, such as "Pi-hole DNS replies". - `target`: the objective as a fraction, such as 0.999 for 99.9%. - `window_days`: the SLO window: 7, 30 or 90 (Datadog's choices). Default 30. - `tiers`: which burn-rate alerts to create, out of `fast` (14.4x over 1h and 5m, critical), `medium` (6x over 6h and 30m, critical) and `slow` (3x over 1d and 2h, warning). Default is all three. Use `["slow"]` for a service too quiet to page on. - `group`: the rule group. Default `slo`. - `grafana`: for the Grafana backend, `error_ratio`, a PromQL expression for the fraction of events that were bad over `${window}`, a value from 0 to 1. Write `${window}` where the range goes; it is filled in for each alert window. It must return a single series, so aggregate it with `sum()` or similar. Optionally `bad_events` and `min_bad_events`: a PromQL count of bad events over `${window}`, and the fewest bad events in an alert's long window before it fires, so a blip on a quiet service doesn't page. Grafana only; Datadog's burn-rate monitors can't express it. - `datadog`: for the Datadog backend, `good` and `total`, the metric queries that count good events and all valid events (`sum:my.metric{...}.as_count()`).  Each SLO needs at least one backend block. The burn-rate thresholds come from the share of the error budget each tier may spend, so they stay correct for every window. | ```map(object({ datadog = optional(object({ good = string total = string })) grafana = optional(object({ bad_events = optional(string) error_ratio = string min_bad_events = optional(number) })) group = optional(string, "slo") target = number tiers = optional(list(string), ["fast", "medium", "slow"]) title = string window_days = optional(number, 30) }))``` | `{}` | no |
 
 ## Outputs
 
