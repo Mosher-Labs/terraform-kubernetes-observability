@@ -8,7 +8,7 @@ variable "slos" {
     - `window_days`: the SLO window: 7, 30 or 90 (Datadog's choices). Default 30.
     - `tiers`: which burn-rate alerts to create, out of `fast` (14.4x over 1h and 5m, critical), `medium` (6x over 6h and 30m, critical) and `slow` (3x over 1d and 2h, warning). Default is all three. Use `["slow"]` for a service too quiet to page on.
     - `group`: the rule group. Default `slo`.
-    - `grafana`: for the Grafana backend, `error_ratio`, a PromQL expression for the fraction of events that were bad over `$${window}`, a value from 0 to 1. Write `$${window}` where the range goes; it is filled in for each alert window. It must return a single series, so aggregate it with `sum()` or similar.
+    - `grafana`: for the Grafana backend, `error_ratio`, a PromQL expression for the fraction of events that were bad over `$${window}`, a value from 0 to 1. Write `$${window}` where the range goes; it is filled in for each alert window. It must return a single series, so aggregate it with `sum()` or similar. Optionally `bad_events` and `min_bad_events`: a PromQL count of bad events over `$${window}`, and the fewest bad events in an alert's long window before it fires, so a blip on a quiet service doesn't page. Grafana only; Datadog's burn-rate monitors can't express it.
     - `datadog`: for the Datadog backend, `good` and `total`, the metric queries that count good events and all valid events (`sum:my.metric{...}.as_count()`).
 
     Each SLO needs at least one backend block. The burn-rate thresholds come from the share of the error budget each tier may spend, so they stay correct for every window.
@@ -19,7 +19,9 @@ variable "slos" {
       total = string
     }))
     grafana = optional(object({
-      error_ratio = string
+      bad_events     = optional(string)
+      error_ratio    = string
+      min_bad_events = optional(number)
     }))
     group       = optional(string, "slo")
     target      = number
@@ -46,6 +48,16 @@ variable "slos" {
   validation {
     condition     = alltrue([for s in values(var.slos) : s.grafana != null || s.datadog != null])
     error_message = "Each SLO needs a grafana block, a datadog block, or both."
+  }
+
+  validation {
+    condition     = alltrue([for s in values(var.slos) : s.grafana == null ? true : (s.grafana.bad_events == null) == (s.grafana.min_bad_events == null)])
+    error_message = "grafana.bad_events and grafana.min_bad_events go together: set both or neither."
+  }
+
+  validation {
+    condition     = alltrue([for s in values(var.slos) : s.grafana == null ? true : s.grafana.bad_events == null || strcontains(coalesce(s.grafana.bad_events, "none"), "$${window}")])
+    error_message = "grafana.bad_events must contain $${window}, where the alert window goes."
   }
 
   validation {

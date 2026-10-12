@@ -75,6 +75,89 @@ run "grafana_expression_needs_both_windows" {
   }
 }
 
+run "min_bad_events_guards_the_long_window" {
+  command = plan
+
+  module {
+    source = "./modules/slo"
+  }
+
+  variables {
+    slos = {
+      dns = {
+        datadog = {
+          good  = "sum:dns.replies{status:ok}.as_count()"
+          total = "sum:dns.replies{*}.as_count()"
+        }
+        grafana = {
+          bad_events     = "sum(increase(bad[$${window}]))"
+          error_ratio    = "sum(increase(bad[$${window}])) / sum(increase(total[$${window}]))"
+          min_bad_events = 5
+        }
+        target = 0.999
+        title  = "DNS replies"
+      }
+    }
+  }
+
+  assert {
+    condition     = endswith(output.custom_rules["dns_burn_fast"].expr, " and on() ((sum(increase(bad[1h]))) >= 5)") && endswith(output.custom_rules["dns_burn_slow"].expr, " and on() ((sum(increase(bad[1d]))) >= 5)")
+    error_message = "Each tier should also need min_bad_events bad events in its own long window."
+  }
+
+  assert {
+    condition     = output.datadog_slos["dns"].numerator == "sum:dns.replies{status:ok}.as_count()" && !strcontains(output.dashboard_slos["dns"].sli, ">= 5")
+    error_message = "The minimum only applies to the Grafana alerts, not to Datadog or the dashboard."
+  }
+}
+
+run "min_bad_events_needs_bad_events" {
+  command = plan
+
+  module {
+    source = "./modules/slo"
+  }
+
+  variables {
+    slos = {
+      dns = {
+        grafana = {
+          error_ratio    = "1 - avg_over_time(up[$${window}])"
+          min_bad_events = 5
+        }
+        target = 0.999
+        title  = "DNS replies"
+      }
+    }
+  }
+
+  expect_failures = [var.slos]
+}
+
+run "rejects_bad_events_without_a_window" {
+  command = plan
+
+  module {
+    source = "./modules/slo"
+  }
+
+  variables {
+    slos = {
+      dns = {
+        grafana = {
+          bad_events     = "sum(bad)"
+          error_ratio    = "1 - avg_over_time(up[$${window}])"
+          min_bad_events = 5
+        }
+        target = 0.999
+        title  = "DNS replies"
+      }
+    }
+  }
+
+  expect_failures = [var.slos]
+}
+
 run "datadog_gets_a_percentage_target_and_the_queries" {
   command = plan
 

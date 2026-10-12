@@ -53,15 +53,17 @@ locals {
         # smaller of the two burn rates: the long window shows the problem is
         # real, the short one makes the alert clear soon after it stops. min()
         # ignores a window with no data or NaN, so the `and` guard keeps the
-        # rule quiet unless both windows have a value.
+        # rule quiet unless both windows have a value. With min_bad_events,
+        # a second guard also needs that many bad events in the long window.
         expr = format(
-          "min(label_replace(%s, \"window\", \"long\", \"\", \"\") or label_replace(%s, \"window\", \"short\", \"\", \"\")) and on() ((%s == %s) and on() (%s == %s))",
+          "min(label_replace(%s, \"window\", \"long\", \"\", \"\") or label_replace(%s, \"window\", \"short\", \"\", \"\")) and on() ((%s == %s) and on() (%s == %s))%s",
           local.burn[slo_id][local.tiers[tier].long],
           local.burn[slo_id][local.tiers[tier].short],
           local.burn[slo_id][local.tiers[tier].long],
           local.burn[slo_id][local.tiers[tier].long],
           local.burn[slo_id][local.tiers[tier].short],
           local.burn[slo_id][local.tiers[tier].short],
+          slo.grafana.min_bad_events == null ? "" : format(" and on() ((%s) >= %g)", templatestring(slo.grafana.bad_events, { window = local.tiers[tier].long }), slo.grafana.min_bad_events),
         )
         group          = slo.group
         operator       = "gt"
