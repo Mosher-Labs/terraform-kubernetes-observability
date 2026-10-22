@@ -34,7 +34,7 @@ repos:
         name: terraform fmt
         language: docker_image
         files: \.(tf|tftest\.hcl)$
-        entry: docker.io/hashicorp/terraform:1.16.6@sha256:bfffc1ded5fbf0a17beaaf22eb4793980abdb19d0761ff6a3a0efb2ab4d9b316 fmt
+        entry: docker.io/hashicorp/terraform:1.17.0@sha256:4d1b496a256f2989bccdb04b9104a4ede97234b10fba90259e173e905ec4fb58 fmt
       - id: tflint
         name: tflint
         language: docker_image
