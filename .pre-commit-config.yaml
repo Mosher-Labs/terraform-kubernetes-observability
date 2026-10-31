@@ -40,12 +40,12 @@ repos:
         language: docker_image
         types: [terraform]
         pass_filenames: false
-        entry: ghcr.io/terraform-linters/tflint:v0.64.0@sha256:1c595f42d794c32c45a6ea8b58655fd66433d4ca3b1bc631c574a48d120bd19f --recursive --config=/src/.tflint.hcl
+        entry: ghcr.io/terraform-linters/tflint:v0.65.0@sha256:2788f4d4fc663c0e953b011b01bf443fe5bfce7587ee916e588e6057b85d6359 --recursive --config=/src/.tflint.hcl
       - id: markdownlint-docker
         name: markdownlint
         language: docker_image
         types: [markdown]
-        entry: ghcr.io/igorshubovych/markdownlint-cli:v0.49.1@sha256:905baf9f6bd11da2ede8c394882c616509385f24b8b8d54fff6e111be88f39de
+        entry: ghcr.io/igorshubovych/markdownlint-cli:v0.50.0@sha256:db7dcb73cd3163cc45854b60fc21eefe1ebe7fa52aad758706010b64a4778900
       - id: actionlint-docker
         name: Lint GitHub Actions workflow files
         language: docker_image
@@ -53,14 +53,14 @@ repos:
         files: ^\.github/workflows/
         entry: docker.io/rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: 91ab4bf57e58b32adf1a122681f6ebe164d081c8  # frozen: v4.4.0
+    rev: 33b50eb042bee26eac0ee96ad84aa9c1b4dccdd8  # frozen: v4.5.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
   # Keeps the revs above current and frozen to commit SHAs. Checks at most once
   # a day, and only takes releases that are at least a week old.
   - repo: https://github.com/mosher-labs/pre-commit-autoupdate
-    rev: 79cdf9233d720a9cd8bfb3f2cd715d45b2dd6bce  # frozen: v1.2.9
+    rev: 3be8bbd6c69bcf775d15ec32213b779b82bfacb3  # frozen: v1.2.11
     hooks:
       - id: autoupdate
         args: [--freeze, --interval-hours, "24", --min-age-days, "7"]
