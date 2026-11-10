@@ -40,7 +40,7 @@ repos:
         language: docker_image
         types: [terraform]
         pass_filenames: false
-        entry: ghcr.io/terraform-linters/tflint:v0.65.0@sha256:2788f4d4fc663c0e953b011b01bf443fe5bfce7587ee916e588e6057b85d6359 --recursive --config=/src/.tflint.hcl
+        entry: ghcr.io/terraform-linters/tflint:v0.66.0@sha256:65b9944a9274c4989492c1d79998c2801664bf8a55fddb4bd3a9e6d73a006ddc --recursive --config=/src/.tflint.hcl
       - id: markdownlint-docker
         name: markdownlint
         language: docker_image
@@ -60,7 +60,7 @@ repos:
   # Keeps the revs above current and frozen to commit SHAs. Checks at most once
   # a day, and only takes releases that are at least a week old.
   - repo: https://github.com/mosher-labs/pre-commit-autoupdate
-    rev: 2f632ef73df75471c3f47c69acf2c244eb0bee4c  # frozen: v1.2.12
+    rev: 1dd9331aa6ff32c2a28e6ab25f2d70e98965a4e7  # frozen: v1.2.13
     hooks:
       - id: autoupdate
         args: [--freeze, --interval-hours, "24", --min-age-days, "7"]
